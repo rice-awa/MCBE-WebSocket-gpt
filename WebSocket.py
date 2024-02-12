@@ -4,20 +4,27 @@ import websockets
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
-#api_url = "API_URL" # API地址
-#api_key = "API_KEY"  # 硬编码api用于本地测试
+api_url = "API_URL" # API地址
+api_key = "API_KEY"  # 硬编码api用于本地测试
 
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
-#WebSocket
-ip = "localhost" # 如需配置服务器请修改ip
-port = "8080"
-welcome_message = ""
-#初始化conversation变量
-conversation = None
 
 # 上下文（临时）
 enable_history = False # 默认关闭
+
+#WebSocket
+ip = "localhost" # 如需配置服务器请修改ip
+port = "8080" # 端口
+welcome_message = f"""
+成功连接WebSocket服务器
+服务器ip:{ip}
+端口:{port}
+GPT上下文:{enable_history}
+"""
+
+#初始化conversation变量
+conversation = None
 
 async def gpt_main(player_prompt):
     global conversation, enable_history
