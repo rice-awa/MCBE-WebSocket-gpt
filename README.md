@@ -11,7 +11,7 @@
 
 ## 开始
 
-在开始之前，请确保你已经安装了Python 3.7+ 和 `websockets` 库。
+在开始之前，请确保你已经安装了Python 3.7+ , `websockets`以及`aiohttp` 库。
 
 1. 克隆仓库到本地：
 
