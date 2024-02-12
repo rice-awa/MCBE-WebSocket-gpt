@@ -35,9 +35,7 @@ pip install websockets
 编辑 `Websocket.py` 文件夹中的 `api_url` 和 `api_key` 变量，填入你的GPT API信息。
 
 这里推荐使用第三方的转发key（当然官网api也可以）
-视频中使用的是：
-
-[免费的apikey](https://gpt-houtar.koyeb.app/)
+视频中使用的是：[免费的apikey](https://gpt-houtar.koyeb.app/)
 ## 使用
 
 启动服务器：
