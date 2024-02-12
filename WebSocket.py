@@ -6,8 +6,7 @@ from gptapi import GPTAPIConversation
 # 请修改此处"API_URL"和"API_KEY"
 #api_url = "API_URL" # API地址
 #api_key = "API_KEY"  # 硬编码api用于本地测试
-api_url = "https://gpt-houtar.koyeb.app/v1/chat/completions" # API地址
-api_key = "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"  # 硬编码api用于本地测试
+
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 #WebSocket
