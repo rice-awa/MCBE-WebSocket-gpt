@@ -2,121 +2,136 @@
 
 这个项目提供了一个基于Python的Minecraft Bedrock Edition (***MCBE***) 服务器端的WebSocket服务，它可以获取玩家的**聊天信息**，并调用GPT API实现在游戏内使用**chatGPT**，最终将GPT回复传回到游戏中。项目使用aiohttp和Websockets异步。
 
-## 目录
+---
 
-- [功能](#功能)
-- [开始](#开始)
-- [配置](#配置)
-- [使用](#使用)
-- [注意](#注意)
-- [贡献](#贡献)
-- [许可证](#许可证)
-- [反馈](#反馈)
-- [待办事项](#待办事项)
+**目录**
 
-## 功能
+- [功能特点](#功能特点)
+- [快速开始](#快速开始)
+- [配置指南](#配置指南)
+- [使用说明](#使用说明)
+- [注意事项](#注意事项)
+- [如何贡献](#如何贡献)
+- [许可信息](#许可信息)
+- [问题反馈](#问题反馈)
+- [待办清单](#待办清单)
 
-- 获取玩家发送的消息
-- 利用GPT API生成回复
-- 将GPT的回复发送回MCBE游戏中
-- 支持GPT上下文（需要将`enable_history`设为`True`）
+---
 
-## 开始
+## 功能特点
 
-在开始之前，请确保你已经安装了Python 3.7+，`websockets`以及`aiohttp`库。
+- **捕获玩家消息**：实时获取玩家在游戏中的聊天信息。
+- **智能回复生成**：通过 GPT API 生成回复内容。
+- **游戏内展示**：将 GPT 生成的回复直接发送至 MCBE 游戏中。
+- **上下文支持**：通过设置 `enable_history` 为 `True` 来启用会话历史记录。
 
-1. 克隆仓库到本地：
+---
+
+## 快速开始
+
+确保你的环境已安装 Python 3.7+，`websockets` 和 `aiohttp`。
+
+1. **克隆项目**：
 
     ```bash
     git clone https://github.com/rice-awa/MCBE_WebSocket_gpt.git
     cd MCBE_WebSocket_gpt
     ```
 
-2. 安装所需的Python依赖：
+2. **安装依赖**：
 
     ```bash
     pip install -r requirements.txt
     ```
-    
-    或者使用：
-    
+
+    或者单独安装：
+
     ```bash
-    pip install aiohttp
-    pip install websockets
+    pip install aiohttp websockets
     ```
 
-## 配置
+---
 
-- 配置API密钥和地址：
+## 配置指南
 
-  编辑 `Websocket.py` 文件中的 `api_url` 和 `api_key` 变量，填入你的GPT API信息。
+- **设置 API 密钥**：
 
-  这里推荐使用第三方的转发key（当然官网api也可以）。
+  在 `Websocket.py` 文件中找到 `api_url` 和 `api_key`，并填入你的 GPT API 信息。
+
+  推荐使用 [免费的apikey](https://gpt-houtar.koyeb.app) 或官方 API。
+
+- **服务器设置**：
+
+  根据你的服务器配置，修改 `ip` 和 `port` 参数。
   
-  视频中使用的是：[免费的apikey](https://gpt-houtar.koyeb.app)
+  启用 `enable_history` 来控制是否记录会话上下文。
 
-- `ip` 和 `port` 可以根据你服务器的配置进行修改。
-- `enable_history` 选项允许你控制是否启用上下文。
+---
 
-## 使用
+## 使用说明
 
-1. 启动服务器：
+1. **启动 WebSocket 服务器**：
 
     ```bash
     python Websocket.py
     ```
 
-2. 打开Minecraft在聊天框输入：
+2. **连接服务器**：
 
-    ```base
-    /wsserver localhost:8080
-    ```
-    
+    在 Minecraft 聊天框输入 `/wsserver localhost:8080`。
+
     ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
-    
-    这里的localhost:8080是ip加端口，根据自己的设置填写，默认为上面提到的配置。
 
-3. 聊天命令`GPT 聊天 {内容}`注意需要空格分开，例如：
+3. **使用聊天命令**：
 
-    ![](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
-    
-    **GPT回复为绿色字体**
+    通过命令 `GPT 聊天 {内容}` 与 GPT 对话。
 
-4. 保存和关闭会话：
+    ![GPT Chat Command](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
 
-    ![](https://s11.ax1x.com/2024/02/13/pF8y4oD.png)
-    
-    保存完毕后根目录会有对话记录和日志。
-    
-    ![](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
+    GPT 回复将以绿色字体显示。
 
-## 注意
+4. **会话管理**：
 
-- **请不要在公共仓库中硬编码你的API密钥**。你可以使用环境变量或其他安全措施来保护你的密钥。
-- 你需要确保你有权使用GPT API，并遵守相关的使用条款。
-- 请确保你有权在MCBE的联机世界中使用`/wsserver`指令。
-- 本项目仅供学习和研究使用，作者不承担任何由于滥用API或违反游戏规则导致的责任。
+    保存和关闭会话后，会在根目录生成对话记录和日志。
 
-## 贡献
+    ![Session Logs](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
-如果你想为这个项目贡献代码，请遵循以下步骤：
+---
 
-1. Fork 这个仓库。
-2. 创建你的特性分支 (`git checkout -b feature/fooBar`)。
-3. 提交你的改动 (`git commit -am 'Add some fooBar'`)。
-4. 推送到分支 (`git push origin feature/fooBar`)。
-5. 创建一个新的 Pull Request。
+## 注意事项
 
-## 许可证
+- **保护你的 API 密钥**：不要在公共代码库中直接编写你的密钥，使用环境变量或其他安全方法。
+- **合法使用 API**：确保你有权使用 GPT API 并遵守相关条款。
+- **遵守游戏规则**：确保你有使用 `/wsserver` 指令的权限，不要违反 MCBE 的游戏规则。
 
-[MIT](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)
+---
 
-## 反馈
+## 如何贡献
 
-- 有问题？[联系我](https://space.bilibili.com/521856101)
+欢迎为项目贡献代码：
 
-## 待办事项
+1. Fork 仓库。
+2. 创建新的特性分支 (`git checkout -b feature/fooBar`)。
+3. 提交更改 (`git commit -am 'Add some fooBar'`)。
+4. 推送至分支 (`git push origin feature/fooBar`)。
+5. 提交 Pull Request。
 
-- [ ] 添加更详细的安装和配置指南。
-- [ ] 实现更多的游戏内交互功能。
-- [ ] 提供一个安全的方式来存储API密钥。
+---
+
+## 许可信息
+
+本项目采用 [MIT 许可证](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)。
+
+---
+
+## 问题反馈
+
+遇到问题？请[联系我](https://space.bilibili.com/521856101)。
+
+---
+
+## 待办清单
+
+- [ ] 提供详细的安装和配置教程。
+- [ ] 增加更多游戏内交互功能。
+- [ ] 设计安全存储 API 密钥的方法。
