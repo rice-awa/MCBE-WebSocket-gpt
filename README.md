@@ -59,7 +59,7 @@
 
   在 `Websocket.py` 文件中找到 `api_url` 和 `api_key`，并填入你的 GPT API 信息。
 
-  这里推荐使用第三方转发key，视频中使用的是 [免费的apikey](https://gpt-houtar.koyeb.app) 当然官方API也可以。
+  这里推荐使用第三方转发key，视频中使用的是 [免费的apikey](https://gpt-houtar.koyeb.app) 当然官方APIKEY也可以。
 
 - **服务器设置**：
 
@@ -122,13 +122,13 @@
 
 ## 许可信息
 
-本项目采用 [MIT 许可证](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)。
+[MIT](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)。
 
 ---
 
 ## 问题反馈
 
-遇到问题？[联系我](https://space.bilibili.com/521856101)。
+有问题？[联系我](https://space.bilibili.com/521856101)。
 
 ---
 
