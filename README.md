@@ -47,7 +47,8 @@
     或者单独安装：
 
     ```bash
-    pip install aiohttp websockets
+    pip install aiohttp
+    pip install websockets
     ```
 
 ---
