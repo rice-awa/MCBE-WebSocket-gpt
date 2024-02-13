@@ -120,9 +120,9 @@
 
 ---
 
-## 许可信息
+## 许可证
 
-[MIT](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)。
+[MIT](https://github.com/rice-awa/MCBE_WebSocket_gpt/blob/main/LICENSE.txt)
 
 ---
 
