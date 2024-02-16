@@ -3,6 +3,8 @@
 
 这个项目提供了一个基于Python的Minecraft Bedrock Edition (***MCBE***) 服务器端的WebSocket服务，它可以获取玩家的**聊天信息**，并调用GPT API实现在游戏内使用**chatGPT**，最终将GPT回复传回到游戏中。项目使用aiohttp和Websockets异步。
 
+如果你问我就一个小项目，自述文件写那么多干嘛？
+我闲的（
 ---
 
 **目录**
