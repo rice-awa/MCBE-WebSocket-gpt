@@ -1,4 +1,4 @@
-# MCBE_Websocket 服务器使用GPT
+# MCBE Websocket Server 游戏内使用GPT
 
 这个项目提供了一个基于Python的Minecraft Bedrock Edition (***MCBE***) 服务器端的WebSocket服务，它可以获取玩家的**聊天信息**，并调用GPT API实现在游戏内使用**chatGPT**，最终将GPT回复传回到游戏中。项目使用aiohttp和Websockets异步。
 
@@ -59,7 +59,7 @@
 
   在 `Websocket.py` 文件中找到 `api_url` 和 `api_key`，并填入你的 GPT API 信息。
 
-  这里推荐使用第三方转发key，视频中使用的是 [免费的apikey](https://gpt-houtar.koyeb.app) 当然官方APIKEY也可以。
+  这里推荐使用第三方转发key，推荐使用这个 [免费的apikey](https://gpt-houtar.koyeb.app) 当然官方APIKEY也可以。
 
 - **服务器设置**：
 
@@ -85,24 +85,29 @@
 
 3. **使用聊天命令**：
 
-    通过命令 `GPT 聊天 {内容}` 与 GPT 对话。
+    聊天输入 `GPT 聊天 {内容}` 与 GPT 对话。这里注意每个参数需要空格隔开
 
-    ![GPT Chat Command](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
+    ![GPT聊天](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
 
     GPT 回复为绿色字体。
 
-4. **会话管理**：
+4. **保存对话**：
+    - 输入`GPT 保存`来保存对话。注意"保存"的后面不要有空格
+    - 保存和关闭会话后，会在根目录生成对话记录和日志。
 
-    保存和关闭会话后，会在根目录生成对话记录和日志。
+    ![对话日志](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
-    ![Session Logs](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
+5. **上下文**
+    - `GPT 上下文` 查看当前上下文状态
+    - `GPT 上下文 启用` 开启GPT上下文
+    - `GPT 上下文 关闭` 关闭GPT上下文
 
 ---
 
 ## 注意事项
 
-- **保护你的 API 密钥**：不要在**公共代码库中直接编写你的密钥**，使用环境变量或其他安全方法。
-- **合法使用 API**：确保你有权使用 GPT API 并遵守相关条款。
+- **保护你的 API 密钥**：不要在**公共代码库中直接编写你的API密钥**，可以使用环境变量或其他安全方法。
+- **合法使用 API**：确保你有权使用 GPT API 并遵守相关条款。不要滥用API。
 - **遵守游戏规则**：确保你有使用 `/wsserver` 指令的权限，不要违反联机服务器的游戏规则。
 - 本项目仅供学习和研究使用，作者不承担任何由于滥用API或违反游戏规则导致的责任。
 
@@ -137,3 +142,7 @@
 - [ ] 提供详细的安装和配置教程。
 - [ ] 增加更多游戏内交互功能。
 - [ ] 设计安全存储 API 密钥的方法。
+
+---
+
+## README.md 部分内容使用GPT生成
