@@ -145,4 +145,4 @@
 
 ---
 
-## README.md 部分内容使用GPT生成
+## README.md 部分内容使用GPT4生成
