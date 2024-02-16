@@ -6,7 +6,7 @@ from gptapi import GPTAPIConversation
 # 请修改此处"API_URL"和"API_KEY"
 api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
 api_key = "API_KEY"  # 硬编码api用于本地测试
-
+model = "gpt-4" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 
@@ -30,7 +30,7 @@ async def gpt_main(player_prompt):
     global conversation, enable_history
     # 创建实例
     if conversation is None:
-        conversation = GPTAPIConversation(api_key, api_url, system_prompt, enable_logging=True)
+        conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
     # 发送提示到GPT并获取回复
     gpt_message = await conversation.call_gpt_and_send(player_prompt)
     if gpt_message is None:

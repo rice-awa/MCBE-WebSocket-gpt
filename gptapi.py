@@ -6,7 +6,7 @@ import datetime
 
 # 定义一个类来管理与GPT API的会话和上下文
 class GPTAPIConversation:
-    def __init__(self, api_key, api_url, system_prompt="", enable_logging=False):
+    def __init__(self, api_key, api_url, model,  system_prompt="", enable_logging=False):
         self.api_key = api_key  # API密钥
         self.session = aiohttp.ClientSession()  # 创建一个aiohttp会话
         self.url = api_url  # API URL
@@ -18,6 +18,7 @@ class GPTAPIConversation:
         self.messages_data = '' # 存储完整对话数据
         self.system_prompt = system_prompt  # 系统级提示词
         self.enable_logging = enable_logging  # 控制日志记录的开关
+        self.model = model # GPT对话模型
         
     def log_message(self, message):
         if self.enable_logging:
@@ -74,7 +75,7 @@ class GPTAPIConversation:
         data = {
             "messages": self.messages,
             "stream": True,
-            "model": "gpt-4",
+            "model": self.model,
             "temperature": 0.5,
             "presence_penalty": 2
         }
