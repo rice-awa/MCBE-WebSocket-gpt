@@ -1,5 +1,5 @@
 # MCBE Websocket Server with In-Game GPT Usage
-[中文](./README_ZH.md)
+[中文](./README.md)
 
 This project provides a Python-based WebSocket service for the Minecraft Bedrock Edition (***MCBE***) server, which captures players' **chat messages**, calls the GPT API to enable in-game use of **chatGPT**, and ultimately sends the GPT's responses back into the game. The project utilizes `aiohttp` and `Websockets` asynchronously.
 
