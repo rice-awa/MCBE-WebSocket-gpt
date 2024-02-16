@@ -14,7 +14,7 @@ This project provides a Python-based WebSocket service for the Minecraft Bedrock
 - [Precautions](#precautions)
 - [How to Contribute](#how-to-contribute)
 - [License](#license)
-- [Feedback](#feedback)
+- [Contact me](#Contact-me)
 - [To-Do List](#to-do-list)
 
 ---
