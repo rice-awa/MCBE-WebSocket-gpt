@@ -86,7 +86,7 @@ Make sure your environment has Python 3.7+, `websockets`, and `aiohttp` installe
 
 3. **Use Chat Commands**:
 
-    In chat, type `GPT chat {content}` to converse with GPT. Note that each argument should be separated by a space.
+    In chat, type `GPT 聊天 {content}` to converse with GPT. Note that each argument should be separated by a space.
 
     ![GPT Chat](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
 
@@ -99,9 +99,9 @@ Make sure your environment has Python 3.7+, `websockets`, and `aiohttp` installe
     ![Conversation Log](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
 5. **Context**
-    - `GPT context` to check the current context status.
-    - `GPT context enable` to enable GPT context.
-    - `GPT context disable` to disable GPT context.
+    - `GPT 上下文` to check the current context status.
+    - `GPT 上下文 启用` to enable GPT context.
+    - `GPT 上下文 关闭` to disable GPT context.
 
 ---
 
