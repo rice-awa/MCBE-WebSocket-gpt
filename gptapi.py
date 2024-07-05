@@ -5,10 +5,10 @@ import json
 import datetime
 
 class GPTAPIConversation:
-    def __init__(self, api_key, model, system_prompt="", enable_logging=False):
+    def __init__(self, api_key, api_url, model, system_prompt="", enable_logging=False):
         self.api_key = api_key
         self.session = aiohttp.ClientSession()  # 创建一个aiohttp会话
-        self.url = "https://burn.hair/v1/chat/completions"
+        self.url = api_url
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -82,20 +82,3 @@ class GPTAPIConversation:
 
     async def close(self):
         await self.session.close()  # 关闭会话
-
-# # 用你的API密钥替换OPENAI_API_KEY
-# api_key = "sk-LYZlINVXCT7T2cb43017FaB0B8734fAbB6E35f673493CbA6"  # 硬编码api用于本地测试，实际使用环境变量
-# model = "gpt-4"  # 替换为你想使用的模型
-# system_prompt = "始终保持专业的态度"  # 系统级提示词
-
-# # 创建对话实例并运行
-# conversation = GPTAPIConversation(api_key, model, system_prompt, enable_logging=True)
-
-# # 示例调用
-# async def main():
-#     response = await conversation.call_gpt("你好")
-#     print(response)
-#     conversation.save_conversation()
-
-# # 运行示例
-# asyncio.run(main())

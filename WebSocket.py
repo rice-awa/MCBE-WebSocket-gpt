@@ -6,9 +6,8 @@ from gptapi import GPTAPIConversation
 # 请修改此处"API_URL"和"API_KEY"
 api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
 api_key = "API_KEY"  # 硬编码api用于本地测试
-model = "gpt-4" # gpt模型
+model = "gpt-4-0125-preview" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
-
 
 # 上下文（临时）
 enable_history = False # 默认关闭
@@ -26,20 +25,26 @@ GPT上下文:{enable_history}
 #初始化conversation变量
 conversation = None
 
+async def close_gpt():
+    await conversation.save_conversation()
+    await conversation.close()
+    conversation = None
+
 async def gpt_main(player_prompt):
     global conversation, enable_history
     # 创建实例
     if conversation is None:
         conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
     # 发送提示到GPT并获取回复
-    gpt_message = await conversation.call_gpt_and_send(player_prompt)
+    gpt_message = await conversation.call_gpt(player_prompt)
+
     if gpt_message is None:
         gpt_message = '错误: GPT回复为None'
+
     print(f"gpt消息: {gpt_message}")
 
     if not enable_history:
-        await conversation.close()
-        conversation = None
+        await close_gpt()
 
     return gpt_message
 
@@ -100,9 +105,7 @@ async def handle_player_message(websocket, data):
                 print(part)
                 await send_game_message(websocket, part)
         elif message.startswith("GPT 保存"):
-            await conversation.save_conversation()
-            await conversation.close()
-            conversation = None
+            await close_gpt()
             await send_game_message(websocket, "对话关闭，数据已保存！")
         elif message.startswith("GPT 上下文"):
             await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
