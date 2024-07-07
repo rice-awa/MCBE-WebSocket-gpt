@@ -25,10 +25,6 @@ GPT上下文:{enable_history}
 #初始化conversation变量
 conversation = None
 
-async def close_gpt():
-    await conversation.save_conversation()
-    await conversation.close()
-    conversation = None
 
 async def gpt_main(player_prompt):
     global conversation, enable_history
@@ -44,7 +40,8 @@ async def gpt_main(player_prompt):
     print(f"gpt消息: {gpt_message}")
 
     if not enable_history:
-        await close_gpt()
+        await conversation.close()
+        conversation = None
 
     return gpt_message
 
@@ -105,7 +102,11 @@ async def handle_player_message(websocket, data):
                 print(part)
                 await send_game_message(websocket, part)
         elif message.startswith("GPT 保存"):
-            await close_gpt()
+            if not conversation:
+                await send_game_message(websocket, "上下文已关闭，无法保存！")
+                return 
+            else:
+                await conversation.save_conversation()
             await send_game_message(websocket, "对话关闭，数据已保存！")
         elif message.startswith("GPT 上下文"):
             await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
