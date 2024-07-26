@@ -4,9 +4,9 @@ import websockets
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
-api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
-api_key = "API_KEY"  # 硬编码api用于本地测试
-model = "gpt-4-0125-preview" # gpt模型
+api_url = "https://burn.hair/v1/chat/completions" # API地址 #例：https://chat.openai.com/v1/chat/completions
+api_key = "sk-LYZlINVXCT7T2cb43017FaB0B8734fAbB6E35f673493CbA6"  # 硬编码api用于本地测试
+model = "gpt-3.5-turbo-16k" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 # 上下文（临时）
@@ -85,6 +85,45 @@ async def send_game_message(websocket, message):
     }
     await send_data(websocket, game_message)
 
+async def run_command(websocket, command):
+    """运行命令"""
+    message = {
+        "body": {
+            "origin": {
+                "type": "player"
+            },
+            "commandLine": command,
+            "version": 17039360
+        },
+        "header": {
+            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",
+            "messagePurpose": "commandRequest",
+            "version": 1,
+            "EventName": "commandRequest"
+        }
+    }
+    await send_data(websocket, message)
+
+async def send_script_data(websocket, content, messageid="server:send_data"):
+    """使用脚本事件命令给游戏发送数据"""
+    message = {
+        "body": {
+            "origin": {
+                "type": "player"
+            },
+            "commandLine": f"scriptevent {messageid} {content}",
+            "version": 17039360
+        },
+        "header": {
+            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",
+            "messagePurpose": "commandRequest",
+            "version": 1,
+            "EventName": "commandRequest"
+        }
+    }
+    await send_data(websocket, message)
+
+
 async def handle_player_message(websocket, data):
     global conversation, enable_history
     """处理玩家消息事件"""
@@ -92,30 +131,60 @@ async def handle_player_message(websocket, data):
     message = data['body']['message']
     
     if sender and message:
-        print(f"玩家{sender}说: {message}")
-        if message.startswith("GPT 聊天"):
-            prompt = message[len("GPT 聊天 "):]
-            gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
-            # 分割消息为长度不超过50的多个部分
-            message_parts = [gpt_message[i:i+50] for i in range(0, len(gpt_message), 50)]
-            for part in message_parts:
-                print(part)
-                await send_game_message(websocket, part)
-        elif message.startswith("GPT 保存"):
-            if not conversation:
-                await send_game_message(websocket, "上下文已关闭，无法保存！")
-                return 
-            else:
-                await conversation.save_conversation()
-            await send_game_message(websocket, "对话关闭，数据已保存！")
-        elif message.startswith("GPT 上下文"):
-            await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
-            if message[len("GPT 上下文 "):] == "启用":
-                enable_history = True
-                await send_game_message(websocket, "GPT上下文已启用，注意tokens消耗!")
-            elif message[len("GPT 上下文 "):] == "关闭":
-                enable_history = False
-                await send_game_message(websocket, "GPT上下文已关闭")
+        print(f"玩家 {sender} 说: {message}")
+        command, content = parse_message(message)
+        if command == "GPT 聊天":
+            await handle_gpt_chat(websocket, content)
+        elif command == "GPT 保存":
+            await handle_gpt_save(websocket)
+        elif command == "GPT 上下文":
+            await handle_gpt_context(websocket, content)
+        elif command == "运行命令":
+            await handle_run_command(websocket, content)
+
+def parse_message(message):
+    """解析消息，返回指令和实际内容"""
+    commands = ["GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令"]
+    for cmd in commands:
+        if message.startswith(cmd):
+            return cmd, message[len(cmd):].strip()
+    return "", message
+
+async def handle_gpt_chat(websocket, content):
+    prompt = content
+    gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
+    # 分割消息为长度不超过50的多个部分
+    message_parts = [gpt_message[i:i+50] for i in range(0, len(gpt_message), 50)]
+    for part in message_parts:
+        print(part)
+        await send_game_message(websocket, part)
+        await send_script_data(websocket, part)
+
+async def handle_gpt_save(websocket):
+    global conversation
+    if not conversation:
+        await send_game_message(websocket, "上下文已关闭，无法保存！")
+        return 
+    else:
+        await conversation.save_conversation()
+    await conversation.close()
+    conversation = None
+    await send_game_message(websocket, "对话关闭，数据已保存！")
+
+async def handle_gpt_context(websocket, content):
+    global enable_history
+    await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
+    if content == "启用":
+        enable_history = True
+        await send_game_message(websocket, "GPT上下文已启用，注意tokens消耗!")
+    elif content == "关闭":
+        enable_history = False
+        await send_game_message(websocket, "GPT上下文已关闭")
+
+async def handle_run_command(websocket, content):
+    command = content
+    await run_command(websocket, command)
+
 
 async def handle_event(websocket, data):
     """根据事件类型处理事件"""
@@ -123,6 +192,10 @@ async def handle_event(websocket, data):
     event_name = header.get('eventName')
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data)
+    # 屏蔽玩家操作事件，避免刷屏打印数据
+    if event_name != "PlayerTransform":
+        print(data)
+        print()
 
 async def handle_connection(websocket, path):
     print("客户端已连接")
