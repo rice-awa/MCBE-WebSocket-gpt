@@ -4,9 +4,9 @@ import websockets
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
-api_url = "https://burn.hair/v1/chat/completions" # API地址 #例：https://chat.openai.com/v1/chat/completions
-api_key = "sk-LYZlINVXCT7T2cb43017FaB0B8734fAbB6E35f673493CbA6"  # 硬编码api用于本地测试
-model = "gpt-3.5-turbo-16k" # gpt模型
+api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
+api_key = "API_KEY"  # 硬编码api用于本地测试
+model = "gpt-4-0125-preview" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 # 上下文（临时）
