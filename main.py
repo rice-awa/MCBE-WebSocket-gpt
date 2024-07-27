@@ -24,7 +24,7 @@ enable_history = False # 默认关闭
 
 #WebSocket
 ip = "localhost" # 如需配置服务器请修改ip
-port = "8080" # 端口
+port = "8000" # 端口
 welcome_message = f"""
 成功连接WebSocket服务器
 服务器ip:{ip}
