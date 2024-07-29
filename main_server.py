@@ -234,6 +234,7 @@ async def handle_event(websocket, data, conversation):
         await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
     if event_name != "PlayerTransform":
+        pass
         #print(data)
         #print()
 
