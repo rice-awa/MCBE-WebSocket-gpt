@@ -234,13 +234,13 @@ async def handle_event(websocket, data, conversation):
         await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
     if event_name != "PlayerTransform":
-        print(data)
-        print()
+        #print(data)
+        #print()
 
 async def handle_connection(websocket, path):
     global connection_uuid
-    print("客户端已连接")
     connection_uuid = str(uuid.uuid4())
+    print(f"客户端:{connection_uuid}已连接")
     conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
         ip=ip, port=port, enable_history=enable_history, model=model, uuid=connection_uuid
@@ -257,7 +257,7 @@ async def handle_connection(websocket, path):
     except Exception as e:
         print(f"发生错误: {e}")
     finally:
-        print("客户端已断开连接")
+        print(f"客户端{connection_uuid}已断开连接")
         await conversation.close()
 
 async def main():
