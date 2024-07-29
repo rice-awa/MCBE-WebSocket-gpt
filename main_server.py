@@ -3,6 +3,7 @@ import json
 import os
 import re
 import auth
+import uuid
 import websockets
 from gptapi import GPTAPIConversation
 
@@ -24,24 +25,18 @@ enable_history = False # 默认关闭
 ip = "0.0.0.0"
 port = "8080" # 端口
 
-welcome_message = f"""-----------
+welcome_message_template = """-----------
 成功连接WebSocket服务器
 服务器ip:{ip}
 端口:{port}
 GPT上下文:{enable_history}
 GPT模型:{model}
+连接UUID:{uuid}
 -----------"""
 
-#初始化conversation变量
-conversation = None
-token = None  # 保存生成的令牌
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
 
-async def gpt_main(player_prompt):
-    global conversation, enable_history
-    # 创建实例
-    if conversation is None:
-        conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
+async def gpt_main(conversation, player_prompt):
     # 发送提示到GPT并获取回复
     gpt_message = await conversation.call_gpt(player_prompt)
 
@@ -52,7 +47,6 @@ async def gpt_main(player_prompt):
 
     if not enable_history:
         await conversation.close()
-        conversation = None
 
     return gpt_message
 
@@ -67,7 +61,7 @@ async def subscribe_events(websocket):
             "eventName": "PlayerMessage"
         },
         "header": {
-            "requestId": "5511ca37-07ed-4654-93a0-d1784c4b3f8f",  # uuid
+            "requestId": str(uuid.uuid4()),  # uuid
             "messagePurpose": "subscribe",
             "version": 1,
             "EventName": "commandRequest"
@@ -77,18 +71,18 @@ async def subscribe_events(websocket):
 
 async def send_game_message(websocket, message):
     """向游戏内发送聊天信息"""
-    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%') # 转义特殊字符，避免报错
+    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%')  # 转义特殊字符，避免报错
     print(say_message)
     game_message = {
         "body": {
             "origin": {
                 "type": "say"
             },
-            "commandLine": f'tellraw @a {{"rawtext":[{{"text":"§a{say_message}"}}]}}', #
+            "commandLine": f'tellraw @a {{"rawtext":[{{"text":"§a{say_message}"}}]}}',  #
             "version": 1
         },
         "header": {
-            "requestId": "5511ca37-07ed-4654-93a0-d1784c4b3f8f",  # uuid
+            "requestId": str(uuid.uuid4()),  # uuid
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -107,7 +101,7 @@ async def run_command(websocket, command):
             "version": 17039360
         },
         "header": {
-            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",
+            "requestId": str(uuid.uuid4()),  # uuid
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -126,7 +120,7 @@ async def send_script_data(websocket, content, messageid="server:data"):
             "version": 17039360
         },
         "header": {
-            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",
+            "requestId": str(uuid.uuid4()),  # uuid
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -134,8 +128,8 @@ async def send_script_data(websocket, content, messageid="server:data"):
     }
     await send_data(websocket, message)
 
-async def handle_player_message(websocket, data):
-    global conversation, enable_history, token
+async def handle_player_message(websocket, data, conversation):
+    global enable_history, connection_uuid
     """处理玩家消息事件"""
     sender = data['body']['sender']
     message = data['body']['message']
@@ -147,12 +141,12 @@ async def handle_player_message(websocket, data):
 
         if command == "#登录":
             if auth.verify_password(content):
-                if auth.is_token_valid():
+                if auth.is_token_valid(connection_uuid):
                     await send_game_message(websocket, "你已经登录过啦！")
                     print("已有有效的令牌，拒绝重新生成")
                 else:
                     token = auth.generate_token()
-                    auth.save_token(token)
+                    auth.save_token(connection_uuid, token)
                     await send_game_message(websocket, "登录成功！")
                     print("密钥验证成功，生成令牌")
                     print(f"令牌: {token}")
@@ -161,20 +155,20 @@ async def handle_player_message(websocket, data):
                 print("密钥无效")
             return
 
-        stored_token = auth.get_stored_token()
+        stored_token = auth.get_stored_token(connection_uuid)
         if stored_token and auth.verify_token(stored_token):
             if command == "GPT 聊天":
-                await handle_gpt_chat(websocket, content)
+                await handle_gpt_chat(websocket, content, conversation)
             elif command == "GPT 脚本":
-                await handle_gpt_script(websocket, content)
+                await handle_gpt_script(websocket, content, conversation)
             elif command == "GPT 保存":
-                await handle_gpt_save(websocket)
+                await handle_gpt_save(websocket, conversation)
             elif command == "GPT 上下文":
                 await handle_gpt_context(websocket, content)
             elif command == "运行命令":
                 await handle_run_command(websocket, content)
 
-        if command and not auth.verify_token(token):
+        if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
 
 def parse_message(message):
@@ -184,34 +178,32 @@ def parse_message(message):
             return cmd, message[len(cmd):].strip()
     return "", message
 
-async def handle_gpt_chat(websocket, content):
+async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
+    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
     # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
     sentences = re.split(r'(?<=[。．.])', gpt_message)
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
-            await send_game_message(websocket, sentence) # 使用脚本处理数据
+            await send_game_message(websocket, sentence)  # 使用脚本处理数据
             await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
-async def handle_gpt_script(websocket, content):
+async def handle_gpt_script(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
+    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
-    await send_script_data(websocket, gpt_message) # 使用脚本处理数据
+    await send_script_data(websocket, gpt_message)  # 使用脚本处理数据
     await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
-async def handle_gpt_save(websocket):
-    global conversation
+async def handle_gpt_save(websocket, conversation):
     if not conversation:
         await send_game_message(websocket, "上下文已关闭，无法保存！")
         return 
     else:
         await conversation.save_conversation()
     await conversation.close()
-    conversation = None
     await send_game_message(websocket, "对话关闭，数据已保存！")
 
 async def handle_gpt_context(websocket, content):
@@ -234,30 +226,39 @@ async def handle_run_command(websocket, content):
     command = content
     await run_command(websocket, command)
 
-async def handle_event(websocket, data):
+async def handle_event(websocket, data, conversation):
     """根据事件类型处理事件"""
     header = data.get('header', {})
     event_name = header.get('eventName')
     if event_name == "PlayerMessage":
-        await handle_player_message(websocket, data)
+        await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
     if event_name != "PlayerTransform":
         print(data)
         print()
 
 async def handle_connection(websocket, path):
+    global connection_uuid
     print("客户端已连接")
+    connection_uuid = str(uuid.uuid4())
+    conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
+    welcome_message = welcome_message_template.format(
+        ip=ip, port=port, enable_history=enable_history, model=model, uuid=connection_uuid
+    )
     await send_game_message(websocket, welcome_message)
     try:
         await send_data(websocket, {"Result": "true"})
         await subscribe_events(websocket)
         async for message in websocket:
             data = json.loads(message)
-            await handle_event(websocket, data)
+            await handle_event(websocket, data, conversation)
     except websockets.exceptions.ConnectionClosed:
         print("连接已断开")
+    except Exception as e:
+        print(f"发生错误: {e}")
     finally:
         print("客户端已断开连接")
+        await conversation.close()
 
 async def main():
     async with websockets.serve(handle_connection, ip, port):
