@@ -202,7 +202,7 @@ async def handle_gpt_save(websocket, conversation):
         await send_game_message(websocket, "上下文已关闭，无法保存！")
         return 
     else:
-        await conversation.save_conversation()
+        conversation.save_conversation()
     await conversation.close()
     await send_game_message(websocket, "对话关闭，数据已保存！")
 
