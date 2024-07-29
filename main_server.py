@@ -24,12 +24,13 @@ enable_history = False # 默认关闭
 ip = "0.0.0.0"
 port = "8080" # 端口
 
-welcome_message = f"""
+welcome_message = f"""-----------
 成功连接WebSocket服务器
 服务器ip:{ip}
 端口:{port}
 GPT上下文:{enable_history}
-"""
+GPT模型:{model}
+-----------"""
 
 #初始化conversation变量
 conversation = None
