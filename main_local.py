@@ -26,7 +26,7 @@ enable_history = False # 默认关闭
 
 # 获取本地IP地址
 ip = "localhost"
-port = "8000" # 端口
+port = "8080" # 端口
 
 welcome_message = f"""
 成功连接WebSocket服务器
