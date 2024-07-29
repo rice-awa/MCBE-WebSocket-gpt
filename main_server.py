@@ -2,12 +2,9 @@ import asyncio
 import json
 import os
 import re
+import auth
 import websockets
 from gptapi import GPTAPIConversation
-
-# 请修改此处"API_URL"和"API_KEY"
-# api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
-# api_key = "API_KEY"  # 硬编码api用于本地测试
 
 api_url = os.getenv("API_URL")  # API地址
 api_key = os.getenv("API_KEY")  # API密钥
@@ -22,8 +19,6 @@ system_prompt = "请始终保持积极和专业的态度。回答尽量保持一
 
 # 上下文（临时）
 enable_history = False # 默认关闭
-
-#WebSocket
 
 # 获取本地IP地址
 ip = "0.0.0.0"
@@ -118,7 +113,7 @@ async def run_command(websocket, command):
     }
     await send_data(websocket, message)
 
-async def send_script_data(websocket, content, messageid="server:data", ):
+async def send_script_data(websocket, content, messageid="server:data"):
     """使用脚本事件命令给游戏发送数据"""
     message = {
         "body": {
@@ -137,45 +132,55 @@ async def send_script_data(websocket, content, messageid="server:data", ):
     }
     await send_data(websocket, message)
 
-
 async def handle_player_message(websocket, data):
-    global conversation, enable_history
+    global conversation, enable_history, token
     """处理玩家消息事件"""
     sender = data['body']['sender']
     message = data['body']['message']
-    
+
     if sender and message:
         print(f"玩家 {sender} 说: {message}")
+
         command, content = parse_message(message)
-        if command == "GPT 聊天":
-            await handle_gpt_chat(websocket, content)
-        if command == "GPT 脚本":
-            await handle_gpt_script(websocket, content)
-        elif command == "GPT 保存":
-            await handle_gpt_save(websocket)
-        elif command == "GPT 上下文":
-            await handle_gpt_context(websocket, content)
-        elif command == "运行命令":
-            await handle_run_command(websocket, content)
+
+        if command == "#登录":
+            if auth.verify_password(content):
+                if auth.is_token_valid():
+                    await send_game_message(websocket, "你已经登录过啦！")
+                    print("已有有效的令牌，拒绝重新生成")
+                else:
+                    token = auth.generate_token()
+                    auth.save_token(token)
+                    await send_game_message(websocket, "登录成功！")
+                    print("密钥验证成功，生成令牌")
+                    print(f"令牌: {token}")
+            else:
+                await send_game_message(websocket, "登录失败，密钥无效!")
+                print("密钥无效")
+            return
+
+        stored_token = auth.get_stored_token()
+        if stored_token and auth.verify_token(stored_token):
+            if command == "GPT 聊天":
+                await handle_gpt_chat(websocket, content)
+            elif command == "GPT 脚本":
+                await handle_gpt_script(websocket, content)
+            elif command == "GPT 保存":
+                await handle_gpt_save(websocket)
+            elif command == "GPT 上下文":
+                await handle_gpt_context(websocket, content)
+            elif command == "运行命令":
+                await handle_run_command(websocket, content)
+
+        if command and not auth.verify_token(token):
+            await send_game_message(websocket, "请先登录")
 
 def parse_message(message):
     """解析消息，返回指令和实际内容"""
-    commands = ["GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
-    for cmd in commands:
+    for cmd in COMMANDS:
         if message.startswith(cmd):
             return cmd, message[len(cmd):].strip()
     return "", message
-
-# async def handle_gpt_chat(websocket, content):
-#     prompt = content
-#     gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
-#     # 分割消息为长度不超过50的多个部分
-#     message_parts = [gpt_message[i:i+50] for i in range(0, len(gpt_message), 50)]
-#     for part in message_parts:
-#         # print(part)
-#         await send_game_message(websocket, part)
-#         await send_script_data(websocket, part)
-#         await asyncio.sleep(0.2)
 
 async def handle_gpt_chat(websocket, content):
     prompt = content
@@ -186,8 +191,7 @@ async def handle_gpt_chat(websocket, content):
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
-            #await send_game_message(websocket, sentence)
-            await send_script_data(websocket, sentence) # 使用脚本处理数据
+            await send_game_message(websocket, sentence) # 使用脚本处理数据
             await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
 async def handle_gpt_script(websocket, content):
@@ -213,21 +217,20 @@ async def handle_gpt_context(websocket, content):
     
     if content == "启用":
         enable_history = True
-        await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
+        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
         await send_game_message(websocket, "GPT上下文已启用，注意tokens消耗!")
     elif content == "关闭":
         enable_history = False
-        await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
+        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
         await send_game_message(websocket, "GPT上下文已关闭")
     elif content == "状态":
-        await send_game_message(websocket, f"GPT上下文状态:{enable_history}")
+        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
     else:
         await send_game_message(websocket, "无效的上下文指令，请输入启用或关闭")
 
 async def handle_run_command(websocket, content):
     command = content
     await run_command(websocket, command)
-
 
 async def handle_event(websocket, data):
     """根据事件类型处理事件"""
@@ -257,7 +260,7 @@ async def handle_connection(websocket, path):
 async def main():
     async with websockets.serve(handle_connection, ip, port):
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
-        await asyncio.Future()  
+        await asyncio.Future()  # 保持服务器运行
 
 if __name__ == "__main__":
     asyncio.run(main())
