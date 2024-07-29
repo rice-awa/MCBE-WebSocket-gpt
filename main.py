@@ -223,6 +223,7 @@ async def handle_connection(websocket, path):
 
 async def main():
     async with websockets.serve(handle_connection, ip, port):
+        print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.Future()  
 
 if __name__ == "__main__":
