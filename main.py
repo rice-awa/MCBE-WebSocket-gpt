@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import websockets
+import socket
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
@@ -23,8 +24,12 @@ system_prompt = "请始终保持积极和专业的态度。回答尽量保持一
 enable_history = False # 默认关闭
 
 #WebSocket
-ip = "localhost" # 如需配置服务器请修改ip
+
+# 获取本地IP地址
+hostname = socket.gethostname()
+ip = socket.gethostbyname(hostname)
 port = "8000" # 端口
+
 welcome_message = f"""
 成功连接WebSocket服务器
 服务器ip:{ip}
