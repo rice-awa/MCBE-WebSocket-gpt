@@ -33,7 +33,8 @@ GPT上下文:{enable_history}
 
 #初始化conversation变量
 conversation = None
-
+token = None  # 保存生成的令牌
+COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
 
 async def gpt_main(player_prompt):
     global conversation, enable_history
