@@ -1,9 +1,0 @@
-name: my-websocket-app
-services:
-  - name: websocket-service
-    port: 8000
-    image: my-docker-image
-    routes:
-      - name: public-route
-        port: 8000
-        endpoint: /ws
