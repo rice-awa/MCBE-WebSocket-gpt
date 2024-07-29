@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import websockets
-import socket
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
@@ -26,8 +25,7 @@ enable_history = False # 默认关闭
 #WebSocket
 
 # 获取本地IP地址
-hostname = socket.gethostname()
-ip = socket.gethostbyname(hostname)
+ip = "localhost"
 port = "8000" # 端口
 
 welcome_message = f"""
