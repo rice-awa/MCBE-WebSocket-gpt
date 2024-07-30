@@ -87,7 +87,7 @@
    2. 运行脚本
 
    ```bash
-   python3 setup_service.sh.
+   sudo ./setup_service.sh.
    ```
 
 ---
