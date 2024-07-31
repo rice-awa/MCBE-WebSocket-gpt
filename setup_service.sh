@@ -13,6 +13,8 @@ PYTHON_PATH="/usr/bin/python3"
 USER_NAME=$(whoami)
 GROUP_NAME=$(id -gn $USER_NAME)
 ENV_FILE="/etc/mydaemon.env"
+API_URL=\$1
+API_KEY=\$2
 
 # 检查脚本路径是否存在
 if [ ! -f "$SCRIPT_PATH" ]; then
@@ -32,8 +34,6 @@ if [ -z "\$1" ] || [ -z "\$2" ]; then
     exit 1
 fi
 
-API_URL=\$1
-API_KEY=\$2
 
 # 停止并禁用现有服务
 echo "Stopping and disabling existing $SERVICE_NAME service if it exists..."

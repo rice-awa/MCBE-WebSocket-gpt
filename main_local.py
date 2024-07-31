@@ -1,20 +1,18 @@
 import asyncio
 import json
 import os
+import re
 import websockets
 from gptapi import GPTAPIConversation
 
 # 请修改此处"API_URL"和"API_KEY"
-# api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
-# api_key = "API_KEY"  # 硬编码api用于本地测试
+api_url = "API_URL" # API地址 #例：https://chat.openai.com/v1/chat/completions
+api_key = "API_KEY"  # 硬编码api用于本地测试
 
-api_url = os.getenv("API_URL")  # API地址
-api_key = os.getenv("API_KEY")  # API密钥
-
-if not api_url:
-    raise ValueError("API_URL 环境变量未设置")
-if not api_key:
-    raise ValueError("API_KEY 环境变量未设置")
+if api_url == "API_URL":
+    raise ValueError("API_URL 未设置")
+if api_key == "API_KEY":
+    raise ValueError("API_KEY 未设置")
 
 model = "gpt-4-0125-preview" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
@@ -149,6 +147,8 @@ async def handle_player_message(websocket, data):
         command, content = parse_message(message)
         if command == "GPT 聊天":
             await handle_gpt_chat(websocket, content)
+        elif command == "GPT 脚本":
+                await handle_gpt_script(websocket, content)
         elif command == "GPT 保存":
             await handle_gpt_save(websocket)
         elif command == "GPT 上下文":
@@ -164,15 +164,24 @@ def parse_message(message):
             return cmd, message[len(cmd):].strip()
     return "", message
 
-async def handle_gpt_chat(websocket, content):
+async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(prompt)  # 使用 await 调用异步函数
-    # 分割消息为长度不超过50的多个部分
-    message_parts = [gpt_message[i:i+50] for i in range(0, len(gpt_message), 50)]
-    for part in message_parts:
-        print(part)
-        await send_game_message(websocket, part)
-        await send_script_data(websocket, part)
+    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    
+    # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
+    sentences = re.split(r'(?<=[。．.])', gpt_message)
+    
+    for sentence in sentences:
+        if sentence.strip():  # 跳过空句子
+            await send_game_message(websocket, sentence)  # 使用脚本处理数据
+            await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+
+async def handle_gpt_script(websocket, content, conversation):
+    prompt = content
+    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    
+    await send_script_data(websocket, gpt_message)  # 使用脚本处理数据
+    await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
 async def handle_gpt_save(websocket):
     global conversation

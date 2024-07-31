@@ -36,6 +36,8 @@
 - **GPT 回复生成**：通过 GPT API 生成回复内容。
 - **游戏显示**：将 GPT 生成的回复直接发送至 MCBE 中。
 - **支持上下文**：通过设置 `enable_history` 为 `True` 来启用会话历史记录。
+- **支持多个连接**: 每个连接为一个实例，可以多个实例同时连接。注：仅支持服务器(main_server)，本地测试(main_local)无效
+- **支持登录验证，防止 api 被滥用** 请设置环境变量`WEBSOCKET_PASSWORD`和`WEBSOCKET_PASSWORD_HASH`，默认为`123456`和`123456`，请自行修改
 
 ---
 
@@ -43,8 +45,6 @@
 
 确保你的环境已安装 Python 3.8+，`websockets` 和 `aiohttp`。
 如需配置服务器确保你的环境已安装`PyJwt` 和 `psutil`
-
-请参考 [配置指南](#配置指南)。
 
 1. **克隆项目**：
 
@@ -71,20 +71,28 @@
 3. **运行 WebSocket 服务器**：
 
    - 本地测试
+     先修改好
+     `main_local.py`中的`api_url`和`api_key`，然后运行
 
    ```bash
    python main_local.py
    ```
 
    - 服务器运行
-     **自带进程守护**
-     1. 给予脚本权限
+     **如果使用 Linux，自带进程守护(daemon.py)**
+
+   1. 在脚本的变量中配置好环境变量
+      `API_KEY`和`API_URL`
+
+      请参考 [配置指南](#配置指南)。
+
+   2. 给予脚本权限
 
    ```bash
    chmod +x setup_service.sh
    ```
 
-   2. 运行脚本
+   3. 运行脚本
 
    ```bash
    sudo ./setup_service.sh.
@@ -97,11 +105,15 @@
 - **设置 API 密钥**：
 
 - 本地测试
+
   在 `main_local.py` 文件中找到 `api_url` 和 `api_key`，并填入你的 GPT API 信息。
 
-- 服务器运行
+这里推荐使用第三方转发 key，推荐使用这个 [apikey](https://burn.hair/) 当然官方 APIKEY 也可以。
 
-  服务器设置环境变量
+- **环境变量**
+  直接在 bash 脚本`setup_service.sh.`中配置`API_KEY`和`API_URL`变量(仅适用于 Linux)
+
+  或手动设置服务器设置环境变量
 
   ```bash
   export API_URL=" < API_URL >"
@@ -115,13 +127,9 @@
   export API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   ```
 
-  然后在 `main_server.py` 文件中找到 `api_url` 和 `api_key`，并填入你的 GPT API 信息。
-
-这里推荐使用第三方转发 key，推荐使用这个 [apikey](https://burn.hair/) 当然官方 APIKEY 也可以。
-
 - **服务器设置**：
 
-  根据你的服务器配置，修改 `ip` 和 `port` 参数。
+  根据你的需求，修改 `ip` 和 `port` 参数。 **配置服务器需保持 ip 为 0.0.0.0**
 
   启用 `enable_history` 来控制是否记录会话上下文。
 
@@ -132,12 +140,21 @@
 1. **启动 WebSocket 服务器**：
 
    ```bash
-   python Websocket.py
+   python main_local.py
+   ```
+
+   或者在服务器上运行
+
+   ```bash
+   sudo ./setup_service.sh
    ```
 
 2. **连接服务器**：
 
    在 Minecraft 聊天框输入 `/wsserver localhost:8080`。
+
+   如果是服务器请输入
+   `/wsserver <服务器ip>:<服务器端口>`。
 
    ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
 
@@ -157,7 +174,7 @@
    ![对话日志](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
 5. **上下文**
-   - `GPT 上下文` 查看当前上下文状态
+   - `GPT 上下文 状态` 查看当前上下文状态
    - `GPT 上下文 启用` 开启 GPT 上下文
    - `GPT 上下文 关闭` 关闭 GPT 上下文
 
@@ -205,4 +222,4 @@
 
 ---
 
-## README.md 部分内容使用 GPT4 生成
+**感谢使用！**
