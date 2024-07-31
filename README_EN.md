@@ -10,14 +10,14 @@ This project provides a Python-based WebSocket service for Minecraft Bedrock Edi
 
 **2024/7/31** (New)
 
-- 1. Added authentication feature
-- 2. Added process monitoring functionality
+- 1.Added authentication feature
+- 2.Added process monitoring functionality
 
 **2024/7/6**
 
-- 1. Changed API calls to non-streaming transmission
-- 2. Simplified code logic in `gptapi.py`
-- 3. Replaced expired third-party API key
+- 1.Changed API calls to non-streaming transmission
+- 2.Simplified code logic in `gptapi.py`
+- 3.Replaced expired third-party API key
 
 **Table of Contents**
 
