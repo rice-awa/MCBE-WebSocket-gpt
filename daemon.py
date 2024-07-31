@@ -5,7 +5,7 @@ import sys
 import psutil
 import os
 
-# 监控的Python脚本
+# 你要监控的Python脚本
 script_to_run = 'main_server.py'
 process = None
 
