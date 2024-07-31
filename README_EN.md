@@ -1,9 +1,23 @@
-# MCBE Websocket Server with In-Game GPT Usage
-[中文](./README.md)
+# MCBE Websocket Server In-game GPT Usage
 
-This project provides a Python-based WebSocket service for the Minecraft Bedrock Edition (***MCBE***) server, which captures players' **chat messages**, calls the GPT API to enable in-game use of **chatGPT**, and ultimately sends the GPT's responses back into the game. The project utilizes `aiohttp` and `Websockets` asynchronously.
+[简体中文](./README.md)
+
+This project provides a Python-based WebSocket service for Minecraft Bedrock Edition (**_MCBE_**) servers. It can capture players' **chat messages**, call the GPT API to enable **chatGPT** usage in-game, and ultimately send the GPT responses back to the game. The project uses asynchronous programming with aiohttp and Websockets.
 
 ---
+
+## Updates
+
+**2024/7/31** (New)
+
+- 1. Added authentication feature
+- 2. Added process monitoring functionality
+
+**2024/7/6**
+
+- 1. Changed API calls to non-streaming transmission
+- 2. Simplified code logic in `gptapi.py`
+- 3. Replaced expired third-party API key
 
 **Table of Contents**
 
@@ -11,118 +25,122 @@ This project provides a Python-based WebSocket service for the Minecraft Bedrock
 - [Quick Start](#quick-start)
 - [Configuration Guide](#configuration-guide)
 - [Usage Instructions](#usage-instructions)
-- [Precautions](#precautions)
+- [Notes](#notes)
 - [How to Contribute](#how-to-contribute)
-- [License](#license)
-- [Feedback](#Feedback)
+- [License Information](#license-information)
+- [Feedback](#feedback)
 - [To-Do List](#to-do-list)
 
 ---
 
 ## Features
 
-- **Capture Player Messages**: Real-time retrieval of player chat messages in-game.
-- **GPT Reply Generation**: Generate reply content through the GPT API.
-- **In-Game Display**: Send the GPT-generated replies directly into MCBE.
-- **Context Support**: Enable session history recording by setting `enable_history` to `True`.
+- **Capture Player Messages**: Real-time acquisition of players' chat messages in the game.
+- **GPT Response Generation**: Generate reply content through the GPT API.
+- **Game Display**: Send GPT-generated responses directly to MCBE.
+- **Context Support**: Enable conversation history by setting `enable_history` to `True`.
+- **Multiple Connection Support**: Each connection is an instance, allowing multiple instances to connect simultaneously. Note: Only supported for servers (main_server), not effective for local testing (main_local).
+- **Authentication**: Supports login verification to prevent API abuse.
+- **Process Monitoring**: Implements process monitoring and automatic restart using daemon.py.
 
 ---
 
 ## Quick Start
 
-Make sure your environment has Python 3.7+, `websockets`, and `aiohttp` installed.
+Ensure that your environment has Python 3.8+ installed.
 
-1. **Clone the Repository**:
+1. **Clone the project**:
 
-    ```bash
-    git clone https://github.com/rice-awa/MCBE_WebSocket_gpt.git
-    cd MCBE_WebSocket_gpt
-    ```
+   ```bash
+   git clone https://github.com/rice-awa/MCBE_WebSocket_gpt.git
+   cd MCBE_WebSocket_gpt
+   ```
 
-2. **Install Dependencies**:
+2. **Install dependencies**:
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-    Or install separately:
+3. **\*Configure environment variables**
+   Please refer to the [Configuration Guide](#configuration-guide).
 
-    ```bash
-    pip install aiohttp
-    pip install websockets
-    ```
+4. **Run the WebSocket server**:
+   - Local testing
+     Modify `api_url` and `api_key` in `main_local.py`, then run:
+     ```bash
+     python main_local.py
+     ```
+   - Server operation (**If using Linux, process monitoring (daemon.py) is included**)
+     Use the provided script to set up the service:
+     ```bash
+     chmod +x setup_service.sh
+     sudo ./setup_service.sh <API_URL> <API_KEY>
+     ```
+     This will set up a system service that starts automatically and can be used even after server restarts.
 
 ---
 
 ## Configuration Guide
 
-- **Set the API Key**:
+- **API Settings**:
 
-  Locate `api_url` and `api_key` in the `Websocket.py` file and fill in your GPT API information.
+  - Local testing: Set `api_url` and `api_key` in `main_local.py`.
+  - Server: Use the `setup_service.sh` script to set environment variables.
+  - It's recommended to use a third-party forwarded key. We recommend using this [apikey](https://burn.hair/). Of course, official APIKEYs also work.
 
-  It is recommended to use a third-party forwarding key, such as this [free apikey](https://gpt-houtar.koyeb.app). Of course, the official APIKEY can also be used.
+- **Authentication**:
+  Set environment variables `WEBSOCKET_PASSWORD` and `SECRET_KEY`. The default password is "123456".
 
 - **Server Settings**:
-
-  Modify the `ip` and `port` parameters according to your server configuration.
-  
-  Enable `enable_history` to control whether to record session context.
+  Modify the `ip` and `port` parameters. Servers need to keep `ip` as "0.0.0.0".
 
 ---
 
 ## Usage Instructions
 
-1. **Start the WebSocket Server**:
+1. **Start the server**:
+   Follow the instructions in the Quick Start section to run the server.
 
-    ```bash
-    python Websocket.py
-    ```
+2. **Connect to the server**:
+   In the Minecraft chat box, enter `/wsserver <server ip>:<server port>`.
+   ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
 
-2. **Connect to the Server**:
+3. **Log in**:
+   Use `#登录 <password>` for authentication.
+   ![Login verification](https://s3.bmp.ovh/imgs/2024/07/31/82bdff9f34ad14d6.png)
 
-    Enter `/wsserver localhost:8080` in the Minecraft chat box.
+4. **Use chat commands**:
+   Chat input `GPT 聊天 {content}` to converse with GPT. Note that each parameter needs to be separated by a space.
+   ![GPT chat](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
+   GPT replies are in green text.
 
-    ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
+   - `GPT 上下文 <status/enable/disable>`: Manage context
+   - `GPT 脚本 <content>`: Use script events to send data
+   - `运行命令 <command>`: Execute game commands
 
-3. **Use Chat Commands**:
-
-    In chat, type `GPT 聊天 {content}` to converse with GPT. Note that each argument should be separated by a space.
-
-    ![GPT Chat](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
-
-    GPT replies will be in green text.
-
-4. **Save Conversations**:
-    - Type `GPT save` to save the conversation. Note that there should be no space after "save".
-    - After saving and closing the session, conversation logs and records will be generated in the root directory.
-
-    ![Conversation Log](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
-
-5. **Context**
-    - `GPT 上下文` to check the current context status.
-    - `GPT 上下文 启用` to enable GPT context.
-    - `GPT 上下文 关闭` to disable GPT context.
+5. **Save conversations**:
+   - Enter `GPT 保存` to save the conversation. Note that there should be no space after "保存"
+   - After saving and closing the session, conversation records and logs will be generated in the root directory.
+     ![Conversation log](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
 ---
 
-## Precautions
+## Notes
 
-- **Protect Your API Key**: Do not write your API key directly in **public code repositories**. Use environment variables or other secure methods.
-- **Legal Use of the API**: Ensure you have the right to use the GPT API and comply with the terms. Do not abuse the API.
-- **Follow Game Rules**: Make sure you have permission to use the `/wsserver` command and do not violate the rules of online servers.
-- This project is for educational and research purposes only, the author assumes no responsibility for any misuse of the API or violation of game rules.
+- Protect API keys and authentication information.
+- Use the API legally and comply with relevant terms and game rules.
+- This project is for learning and research purposes only.
 
 ---
 
 ## How to Contribute
 
-Contributions to the project are welcome:
-
-1. Fork the repository.
-2. Create a new feature branch (`git checkout -b feature/fooBar`).
-3. Commit your changes (`git commit -am 'Add some fooBar'`).
-4. Push to the branch (`git push origin feature/fooBar`).
-5. Create a Pull Request.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/fooBar`)
+3. Commit your changes (`git commit -am 'Add some fooBar'`)
+4. Push to the branch (`git push origin feature/fooBar`)
+5. Create a new Pull Request
 
 ---
 
@@ -134,16 +152,18 @@ Contributions to the project are welcome:
 
 ## Feedback
 
-Have any questions? [Contact me](https://space.bilibili.com/521856101).
+Got questions? [Contact me](https://space.bilibili.com/521856101).
 
 ---
 
 ## To-Do List
 
-- [ ] Provide detailed installation and configuration tutorials.
-- [ ] Add more in-game interaction features.
-- [ ] Design a secure method to store API keys.
+- [x] Provide detailed installation and configuration tutorials
+- [x] Add authentication feature
+- [x] Implement process monitoring
+- [ ] Add more in-game interaction features
+- [ ] Optimize secure storage method for API keys
 
 ---
 
-## Portions of the README.md content were generated with GPT-4
+**Thanks for using!**
