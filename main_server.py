@@ -48,24 +48,17 @@ async def periodic_update():
     while True:
         for connection_uuid, websocket in connections.items():
             await get_game_information(websocket, connection_uuid)
-        await asyncio.sleep(3)
+        await asyncio.sleep(10)
 
-# async def gpt_player_localtion(websocket):
-#     global information
-#     connection_uuid = websocket.uuid
-#     player_location = information[connection_uuid]["PlayerTransform_message"]["position"]
-#     player_name = information[connection_uuid]["PlayerTransform_message"][player_name]
-#     json_data = {
-#         "player_name": player_name,
-#         "player_location": player_location,
-#     }
-#     return json.dumps(json_data)
+async def gpt_get_time(websocket, dimension):
+    global information
+    return f"当前维度{dimension}，时间:20:00"
 
-async def gpt_game_weather(websocket):
+async def gpt_game_weather(websocket, dimension):
     global information
     connection_uuid = websocket.uuid
-    dimension = information[connection_uuid].get("PlayerTransform_message").get("dimension", "")
-    weather = information[connection_uuid].get("game_weather", "")
+    dimension = dimension #information[connection_uuid]["PlayerTransform_messages"][player_name]["dimension"]
+    weather = information[connection_uuid]["game_weather"]
     print(f"收到天气信息: {weather}")
     
     json_data = {
@@ -74,22 +67,33 @@ async def gpt_game_weather(websocket):
     }
     return json.dumps(json_data)
 
-async def gpt_game_players(websocket, dimension):
+async def gpt_game_players(websocket):
     global information
 
-    players = information.get(websocket.uuid, {}).get("players", "")
+    players = information.get(websocket.uuid, {})["players"]
+    playersinfo = information.get(websocket.uuid, {})["PlayerTransform_messages"]
+    all_players_info = [{"all_players":players}]
+
+    if not playersinfo:
+        return json.dumps({"error": "No player transform messages found."})
     
-    json_data = {
-        "players": players,
-        "dimension": dimension,
-    }
-    return json.dumps(json_data)
+    for player_name, player_info in playersinfo.items():
+        if player_info:
+            json_data = {
+                "player_name": player_info["player_name"],
+                "player_yRot": player_info["player_yRot"],
+                "player_dimension": player_info["dimension"],
+                "position": player_info["position"],
+            }
+            all_players_info.append(json_data)
+    
+    return json.dumps(all_players_info)
 
 # 函数映射
 functions_map = {
     "gpt_game_weather": gpt_game_weather,
     "gpt_game_players": gpt_game_players,
-    #"gpt_player_localtion": gpt_player_localtion
+    "gpt_get_time": gpt_get_time
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -250,15 +254,16 @@ async def handle_event_message(websocket, data):
             information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
 
         # 打印或处理获取到的信息
-        print(f"Player Name: {player_name}")
-        print(f"Player ID: {player_id}")
-        print(f"Player Color: {player_color}")
-        print(f"Player Type: {player_type}")
-        print(f"Player Variant: {player_variant}")
-        print(f"Player yRot: {player_yRot}")
-        print(f"Dimension: {dimension}")
-        print(f"Position - x: {x}, y: {y}, z: {z}")
+        # print(f"Player Name: {player_name}")
+        # print(f"Player ID: {player_id}")
+        # print(f"Player Color: {player_color}")
+        # print(f"Player Type: {player_type}")
+        # print(f"Player Variant: {player_variant}")
+        # print(f"Player yRot: {player_yRot}")
+        # print(f"Dimension: {dimension}")
+        # print(f"Position - x: {x}, y: {y}, z: {z}")
         print(f"存储在字典的信息： {information[connection_uuid]}")
+        #print(f"PlayerTransform_messages: {information[connection_uuid]['PlayerTransform_messages']}")
 
         
 async def handle_command_response(websocket, data):
@@ -342,7 +347,7 @@ async def handle_gpt_chat(websocket, content, conversation):
     gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
     # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
-    sentences = re.split(r'(?<=[。．.])', gpt_message)
+    sentences = re.split(r'(?<=[。.])', gpt_message)
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
@@ -398,12 +403,10 @@ async def handle_connection(websocket, path):
         ip=ip, port=port, model=model, uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
-    
     # 初始化uuid对应的信息
     information[connection_uuid] = {
         "game_weather": '',
-        "players": '',
-        #"PlayerTransform_message": ''
+        "players": ''
     }
     
     # 将连接添加到 connections 字典
@@ -431,7 +434,7 @@ async def main():
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
             asyncio.Future(),  # 保持服务器运行
-            #periodic_update()  # 启动定期更新任务
+            periodic_update()  # 启动定期更新任务
         )
 
 if __name__ == "__main__":
