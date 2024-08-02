@@ -7,16 +7,17 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 设置变量
-SERVICE_NAME="daemon-wsfunction-call"
+SERVICE_NAME="mydaemon"
 SCRIPT_PATH="$(pwd)/daemon.py"
 PYTHON_PATH="/usr/bin/python3"
 USER_NAME=$(whoami)
 GROUP_NAME=$(id -gn $USER_NAME)
-ENV_FILE="/etc/daemon-wsfunction-call.env"
+ENV_FILE="/etc/mydaemon.env"
 API_URL=\$1
 API_KEY=\$2
-SECRET_KEY=\YOUR_SECRET_KEY
 WEBSOCKET_PASSWORD=\YOUR_WEBSOCKET_PASSWORD
+SECRET_KEY=\YOUR_SECRET_KEY
+
 
 # 检查脚本路径是否存在
 if [ ! -f "$SCRIPT_PATH" ]; then
