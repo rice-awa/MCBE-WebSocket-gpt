@@ -15,8 +15,9 @@ GROUP_NAME=$(id -gn $USER_NAME)
 ENV_FILE="/etc/daemon-wsfunction-call.env"
 API_URL=\$1
 API_KEY=\$2
-SECRET_KEY=\YOUR_SECRET_KEY
 WEBSOCKET_PASSWORD=\YOUR_WEBSOCKET_PASSWORD
+SECRET_KEY=\YOUR_SECRET_KEY
+
 
 # 检查脚本路径是否存在
 if [ ! -f "$SCRIPT_PATH" ]; then
