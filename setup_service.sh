@@ -15,6 +15,8 @@ GROUP_NAME=$(id -gn $USER_NAME)
 ENV_FILE="/etc/daemon-wsfunction-call.env"
 API_URL=\$1
 API_KEY=\$2
+SECRET_KEY=\YOUR_SECRET_KEY
+WEBSOCKET_PASSWORD=\YOUR_WEBSOCKET_PASSWORD
 
 # 检查脚本路径是否存在
 if [ ! -f "$SCRIPT_PATH" ]; then
@@ -28,12 +30,11 @@ if [ ! -f "$PYTHON_PATH" ]; then
     exit 1
 fi
 
-# 检查是否传入了API_URL和API_KEY参数
-if [ -z "\$1" ] || [ -z "\$2" ]; then
-    echo "Usage: \$0 <API_URL> <API_KEY>"
+# 检查是否传入了API_URL、API_KEY、SECRET_KEY和WEBSOCKET_PASSWORD参数
+if [ -z "\$1" ] || [ -z "\$2" ] || [ -z "\$3" ] || [ -z "\$4" ]; then
+    echo "Usage: \$0 <API_URL> <API_KEY> <SECRET_KEY> <WEBSOCKET_PASSWORD>"
     exit 1
 fi
-
 
 # 停止并禁用现有服务
 echo "Stopping and disabling existing $SERVICE_NAME service if it exists..."
@@ -62,6 +63,18 @@ if grep -q "^API_KEY=" $ENV_FILE; then
     sed -i "s|^API_KEY=.*|API_KEY=$API_KEY|" $ENV_FILE
 else
     echo "API_KEY=$API_KEY" >> $ENV_FILE
+fi
+
+if grep -q "^SECRET_KEY=" $ENV_FILE; then
+    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$SECRET_KEY|" $ENV_FILE
+else
+    echo "SECRET_KEY=$SECRET_KEY" >> $ENV_FILE
+fi
+
+if grep -q "^WEBSOCKET_PASSWORD=" $ENV_FILE; then
+    sed -i "s|^WEBSOCKET_PASSWORD=.*|WEBSOCKET_PASSWORD=$WEBSOCKET_PASSWORD|" $ENV_FILE
+else
+    echo "WEBSOCKET_PASSWORD=$WEBSOCKET_PASSWORD" >> $ENV_FILE
 fi
 
 # 确认环境变量文件内容
