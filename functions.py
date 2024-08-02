@@ -22,7 +22,21 @@ functions = [
     },
     {
         "name": "gpt_game_players",  # 函数名称
-        "description": "这是一个与MC交互的函数，能够获取MC当前的玩家数量，可能只有一个玩家",  # 函数描述
+        "description": "这是一个与MC交互的函数，能够获取MC当前的玩家数量，坐标，维度，等信息，该函数返回玩家信息json(发送请求时，因此不是最新的信息)，回答时不要特殊格式，坐标每次都重新获取不能用上次坐标，小数保留一位小数，除非特殊要求",  # 函数描述
+        "parameters": {  # 函数参数
+            "type": "object",
+            "properties": {
+                "dimension": {
+                    "type": "string",  # 参数类型
+                    "description": "玩家目前的维度，例如:'overworld'",  # 参数描述
+                    "enum": ["overworld", "nether", "the_end"]  # 参数可选值
+                }
+            }
+        }
+    },
+    {
+        "name": "gpt_get_time",  # 函数名称
+        "description": "获取当前维度的时间",  # 函数描述
         "parameters": {  # 函数参数
             "type": "object",
             "properties": {
@@ -34,6 +48,6 @@ functions = [
             },
             "required": ["dimension"]  # 必需参数
         }
-    }
+    },
 ]
 

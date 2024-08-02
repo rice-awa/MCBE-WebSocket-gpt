@@ -16,12 +16,12 @@ if not api_url:
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "gpt-4o" # gpt模型
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
+model = "gpt-4o"  # gpt模型
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符"  # 系统提示词
 
 # 获取本地IP地址
 ip = "0.0.0.0"
-port = "1145" # 端口
+port = "8080"  # 端口
 
 welcome_message_template = """-----------
 成功连接WebSocket服务器
@@ -30,13 +30,14 @@ welcome_message_template = """-----------
 GPT上下文:function-call不支持关闭上下文，请使用GPT保存
 GPT模型:{model}
 连接UUID:{uuid}
------------"""
+-----------
+"""
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "天气"]
-
+EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 # 使用uuid映射的方式来存储信息
 information = {}
-connections = {}  # 用于存储所有活动的 WebSocket 连接
+connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
 
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
@@ -47,12 +48,17 @@ async def periodic_update():
     while True:
         for connection_uuid, websocket in connections.items():
             await get_game_information(websocket, connection_uuid)
-        await asyncio.sleep(3)
+        await asyncio.sleep(10)
+
+async def gpt_get_time(websocket, dimension):
+    global information
+    return f"当前维度{dimension}，时间:20:00"
 
 async def gpt_game_weather(websocket, dimension):
     global information
-
-    weather = information.get(websocket.uuid, {}).get("game_weather", "")
+    connection_uuid = websocket.uuid
+    dimension = dimension #information[connection_uuid]["PlayerTransform_messages"][player_name]["dimension"]
+    weather = information[connection_uuid]["game_weather"]
     print(f"收到天气信息: {weather}")
     
     json_data = {
@@ -61,21 +67,33 @@ async def gpt_game_weather(websocket, dimension):
     }
     return json.dumps(json_data)
 
-async def gpt_game_players(websocket, dimension):
+async def gpt_game_players(websocket):
     global information
 
-    players = information.get(websocket.uuid, {}).get("players", "")
+    players = information.get(websocket.uuid, {})["players"]
+    playersinfo = information.get(websocket.uuid, {})["PlayerTransform_messages"]
+    all_players_info = [{"all_players":players}]
+
+    if not playersinfo:
+        return json.dumps({"error": "No player transform messages found."})
     
-    json_data = {
-        "players": players,
-        "dimension": dimension,
-    }
-    return json.dumps(json_data)
+    for player_name, player_info in playersinfo.items():
+        if player_info:
+            json_data = {
+                "player_name": player_info["player_name"],
+                "player_yRot": player_info["player_yRot"],
+                "player_dimension": player_info["dimension"],
+                "position": player_info["position"],
+            }
+            all_players_info.append(json_data)
+    
+    return json.dumps(all_players_info)
 
 # 函数映射
 functions_map = {
     "gpt_game_weather": gpt_game_weather,
-    "gpt_game_players": gpt_game_players
+    "gpt_game_players": gpt_game_players,
+    "gpt_get_time": gpt_get_time
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -95,18 +113,19 @@ async def send_data(websocket, message):
 
 async def subscribe_events(websocket):
     """订阅事件"""
-    message = {
-        "body": {
-            "eventName": "PlayerMessage"
-        },
-        "header": {
-            "requestId": str(uuid.uuid4()),  # uuid
-            "messagePurpose": "subscribe",
-            "version": 1,
-            "EventName": "commandRequest"
+    for event_name in EVENT_LISTS:
+        message = {
+            "body": {
+                "eventName": event_name
+            },
+            "header": {
+                "requestId": str(uuid.uuid4()),
+                "messagePurpose": "subscribe",
+                "version": 1,
+                "EventName": "commandRequest"
+            }
         }
-    }
-    await send_data(websocket, message)
+        await send_data(websocket, message)
 
 async def send_game_message(websocket, message):
     """向游戏内发送聊天信息"""
@@ -168,6 +187,85 @@ async def send_script_data(websocket, content, messageid="server:data"):
     }
     await send_data(websocket, message)
 
+async def handle_event_message(websocket, data):
+    """处理事件消息事件"""
+    global information
+
+    body = data.get('body', {})
+    header = data.get('header', {})
+    event_name = header.get('eventName', '')
+
+    if event_name == "PlayerTransform":
+        player = body.get('player', {})
+        player_name = player.get('name', 'Unknown')
+        player_pos = player.get('position', {})
+        dimension_id = player.get('dimension', 'Unknown')
+        player_id = player.get('id', 'Unknown')
+        player_color = player.get('color', 'Unknown')
+        player_type = player.get('type', 'Unknown')
+        player_variant = player.get('variant', 'Unknown')
+        player_yRot = player.get('yRot', 'Unknown')
+
+        # 将 dimension 的数字 ID 转换为对应的字符串值
+        dimension_map = {
+            0: 'overworld',
+            1: 'nether',
+            2: 'the_end'
+        }
+        dimension = dimension_map.get(dimension_id, 'Unknown')
+
+        # 获取位置坐标
+        x = player_pos.get('x', 'Unknown')
+        y = player_pos.get('y', 'Unknown')
+        z = player_pos.get('z', 'Unknown')
+
+        # 构建JSON对象
+        player_transform_message = {
+            "player_name": player_name,
+            "player_id": player_id,
+            "player_color": player_color,
+            "player_type": player_type,
+            "player_variant": player_variant,
+            "player_yRot": player_yRot,
+            "dimension": dimension,
+            "position": {
+                "x": x,
+                "y": y,
+                "z": z
+            }
+        }
+
+        # 存储在information中
+        connection_uuid = websocket.uuid
+        if connection_uuid not in information:
+            information[connection_uuid] = {}
+
+        if "PlayerTransform_messages" not in information[connection_uuid]:
+            information[connection_uuid]["PlayerTransform_messages"] = {}
+        
+        # 检查是否已经存在该玩家的信息，如果存在则更新
+        if player_name in information[connection_uuid]["PlayerTransform_messages"]:
+            existing_message = information[connection_uuid]["PlayerTransform_messages"][player_name]
+            if existing_message["player_id"] == player_id:
+                # 更新现有玩家信息
+                information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
+        else:
+            # 添加新的玩家信息
+            information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
+
+        # 打印或处理获取到的信息
+        # print(f"Player Name: {player_name}")
+        # print(f"Player ID: {player_id}")
+        # print(f"Player Color: {player_color}")
+        # print(f"Player Type: {player_type}")
+        # print(f"Player Variant: {player_variant}")
+        # print(f"Player yRot: {player_yRot}")
+        # print(f"Dimension: {dimension}")
+        # print(f"Position - x: {x}, y: {y}, z: {z}")
+        print(f"存储在字典的信息： {information[connection_uuid]}")
+        #print(f"PlayerTransform_messages: {information[connection_uuid]['PlayerTransform_messages']}")
+
+        
 async def handle_command_response(websocket, data):
     global information
     
@@ -249,7 +347,7 @@ async def handle_gpt_chat(websocket, content, conversation):
     gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
     # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
-    sentences = re.split(r'(?<=[。．.])', gpt_message)
+    sentences = re.split(r'(?<=[。])', gpt_message)
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
@@ -286,26 +384,27 @@ async def handle_event(websocket, data, conversation):
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
-    if event_name != "PlayerTransform":
-        print(data)
-        print()
+    # if event_name == "PlayerTransform":
+    #     pass
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
-    
+    print(data)
+    print()
+    if message_purpose == "event":
+        await handle_event_message(websocket, data)
+
 async def handle_connection(websocket, path):
     global connection_uuid
     connection_uuid = str(uuid.uuid4())
     websocket.uuid = connection_uuid
     print(f"客户端:{connection_uuid}已连接")
-    conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket,system_prompt=system_prompt, enable_logging=True)
+    conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket, system_prompt=system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
         ip=ip, port=port, model=model, uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
-    
     # 初始化uuid对应的信息
     information[connection_uuid] = {
-        "dimension": '',
         "game_weather": '',
         "players": ''
     }
