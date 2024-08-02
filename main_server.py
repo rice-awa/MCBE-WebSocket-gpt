@@ -49,16 +49,17 @@ async def periodic_update():
         for connection_uuid, websocket in connections.items():
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(3)
-async def gpt_player_localtion(websocket):
-    global information
-    connection_uuid = websocket.uuid
-    player_location = information[connection_uuid].get("PlayerTransform_message").get("position", "")
-    player_name = information[connection_uuid].get("PlayerTransform_message").get("player_name", "")
-    json_data = {
-        "player_name": player_name,
-        "player_location": player_location,
-    }
-    return json.dumps(json_data)
+
+# async def gpt_player_localtion(websocket):
+#     global information
+#     connection_uuid = websocket.uuid
+#     player_location = information[connection_uuid]["PlayerTransform_message"]["position"]
+#     player_name = information[connection_uuid]["PlayerTransform_message"][player_name]
+#     json_data = {
+#         "player_name": player_name,
+#         "player_location": player_location,
+#     }
+#     return json.dumps(json_data)
 
 async def gpt_game_weather(websocket):
     global information
@@ -87,7 +88,8 @@ async def gpt_game_players(websocket, dimension):
 # 函数映射
 functions_map = {
     "gpt_game_weather": gpt_game_weather,
-    "gpt_game_players": gpt_game_players
+    "gpt_game_players": gpt_game_players,
+    #"gpt_player_localtion": gpt_player_localtion
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -231,8 +233,21 @@ async def handle_event_message(websocket, data):
 
         # 存储在information中
         connection_uuid = websocket.uuid
-        if connection_uuid in information:
-            information[connection_uuid]["PlayerTransform_message"] = player_transform_message
+        if connection_uuid not in information:
+            information[connection_uuid] = {}
+
+        if "PlayerTransform_messages" not in information[connection_uuid]:
+            information[connection_uuid]["PlayerTransform_messages"] = {}
+        
+        # 检查是否已经存在该玩家的信息，如果存在则更新
+        if player_name in information[connection_uuid]["PlayerTransform_messages"]:
+            existing_message = information[connection_uuid]["PlayerTransform_messages"][player_name]
+            if existing_message["player_id"] == player_id:
+                # 更新现有玩家信息
+                information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
+        else:
+            # 添加新的玩家信息
+            information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
 
         # 打印或处理获取到的信息
         print(f"Player Name: {player_name}")
@@ -244,6 +259,7 @@ async def handle_event_message(websocket, data):
         print(f"Dimension: {dimension}")
         print(f"Position - x: {x}, y: {y}, z: {z}")
         print(f"存储在字典的信息： {information[connection_uuid]}")
+
         
 async def handle_command_response(websocket, data):
     global information
@@ -387,7 +403,7 @@ async def handle_connection(websocket, path):
     information[connection_uuid] = {
         "game_weather": '',
         "players": '',
-        "PlayerTransform_message": ''
+        #"PlayerTransform_message": ''
     }
     
     # 将连接添加到 connections 字典
