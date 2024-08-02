@@ -6,6 +6,7 @@ import auth
 import uuid
 import websockets
 from gptapi import GPTAPIConversation
+from functions import functions
 
 api_url = os.getenv("API_URL")  # API地址
 api_key = os.getenv("API_KEY")  # API密钥
@@ -15,8 +16,8 @@ if not api_url:
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "gpt-4o-mini" # gpt模型
-system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
+model = "gpt-4o" # gpt模型
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 # 上下文（临时）
 enable_history = False # 默认关闭
@@ -34,19 +35,60 @@ GPT模型:{model}
 连接UUID:{uuid}
 -----------"""
 
-COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
+COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本", "测试天气", "天气"]
+
+# 使用uuid映射的方式来存储信息
+information = {}
+connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
+
+async def get_game_information(websocket, connection_uuid):
+    await run_command(websocket, "weather query")
+    await run_command(websocket, "list")
+    print(f"已发送信息查询命令给 {connection_uuid}")
+
+async def periodic_update():
+    while True:
+        for connection_uuid, websocket in connections.items():
+            await get_game_information(websocket, connection_uuid)
+        await asyncio.sleep(3)
+
+async def gpt_game_weather(websocket, dimension):
+    global information
+
+    weather = information.get(websocket.uuid, {}).get("game_weather", "")
+    print(f"收到天气信息: {weather}")
+    
+    json_data = {
+        "dimension": dimension,
+        "weather": weather,
+    }
+    return json.dumps(json_data)
+
+async def gpt_game_players(websocket, dimension):
+    global information
+
+    players = information.get(websocket.uuid, {}).get("players", "")
+    
+    json_data = {
+        "players": players,
+        "dimension": dimension,
+    }
+    return json.dumps(json_data)
+
+# 函数映射
+functions_map = {
+    "gpt_game_weather": gpt_game_weather,
+    "gpt_game_players": gpt_game_players
+}
 
 async def gpt_main(conversation, player_prompt):
     # 发送提示到GPT并获取回复
     gpt_message = await conversation.call_gpt(player_prompt)
 
     if gpt_message is None:
-        gpt_message = '错误: GPT回复为None'
+        gpt_message = '错误: GPT回复为None，模型可能不支持function-call'
 
     print(f"gpt消息: {gpt_message}")
-
-    if not enable_history:
-        await conversation.close()
 
     return gpt_message
 
@@ -92,6 +134,7 @@ async def send_game_message(websocket, message):
 
 async def run_command(websocket, command):
     """运行命令"""
+    print(f"命令{command}开始发送")
     message = {
         "body": {
             "origin": {
@@ -101,7 +144,7 @@ async def run_command(websocket, command):
             "version": 17039360
         },
         "header": {
-            "requestId": str(uuid.uuid4()),  # uuid
+            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",  # uuidstr(uuid.uuid4())
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -127,6 +170,30 @@ async def send_script_data(websocket, content, messageid="server:data"):
         }
     }
     await send_data(websocket, message)
+
+async def handle_command_response(websocket, data):
+    global information
+    
+    print("命令响应处理开始")
+    body = data.get('body', {})
+    if 'statusMessage' in body:
+        message = body['statusMessage']
+        print(f"命令响应: {message}")
+        
+        message_part = message.split('：', 1)
+        if message_part[0] == '天气状态是':
+            weather = message_part[1].strip()
+            connection_uuid = websocket.uuid
+            if connection_uuid in information:
+                information[connection_uuid]["game_weather"] = weather
+            print(f"当前天气: {weather}")
+        if message_part[0][9:13] == '玩家在线':
+            players = message_part[1].strip()
+            connection_uuid = websocket.uuid
+            if connection_uuid in information:
+                information[connection_uuid]["players"] = players
+        else:
+            print("未识别的命令响应")
 
 async def handle_player_message(websocket, data, conversation):
     global enable_history, connection_uuid
@@ -167,6 +234,10 @@ async def handle_player_message(websocket, data, conversation):
                 await handle_gpt_context(websocket, content)
             elif command == "运行命令":
                 await handle_run_command(websocket, content)
+            elif command == "测试天气":
+                await send_game_message(websocket, f"测试结果: {information[connection_uuid]['game_weather']}")
+            elif command == "天气":
+                await send_game_message(websocket, f"天气命令已发送")
 
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
@@ -187,8 +258,9 @@ async def handle_gpt_chat(websocket, content, conversation):
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
-            await send_game_message(websocket, sentence)  # 使用脚本处理数据
-            await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+            await send_game_message(websocket, sentence)
+            #await send_script_data(websocket, sentence)  # 使用脚本处理数据
+            # await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
 async def handle_gpt_script(websocket, content, conversation):
     prompt = content
@@ -203,8 +275,8 @@ async def handle_gpt_save(websocket, conversation):
         return 
     else:
         conversation.save_conversation()
-    await conversation.close()
-    await send_game_message(websocket, "对话关闭，数据已保存！")
+    await conversation.restart()
+    await send_game_message(websocket, "对话重启，数据已保存！")
 
 async def handle_gpt_context(websocket, content):
     global enable_history
@@ -230,22 +302,38 @@ async def handle_event(websocket, data, conversation):
     """根据事件类型处理事件"""
     header = data.get('header', {})
     event_name = header.get('eventName')
+    message_purpose = header.get('messagePurpose')
+
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
     if event_name != "PlayerTransform":
         print(data)
         print()
-
+    if message_purpose == "commandResponse":
+        await handle_command_response(websocket, data)
+    
 async def handle_connection(websocket, path):
     global connection_uuid
     connection_uuid = str(uuid.uuid4())
+    websocket.uuid = connection_uuid
     print(f"客户端:{connection_uuid}已连接")
-    conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
+    conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket,system_prompt=system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
         ip=ip, port=port, enable_history=enable_history, model=model, uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
+    
+    # 初始化uuid对应的信息
+    information[connection_uuid] = {
+        "dimension": '',
+        "game_weather": '',
+        "players": ''
+    }
+    
+    # 将连接添加到 connections 字典
+    connections[connection_uuid] = websocket
+    
     try:
         await send_data(websocket, {"Result": "true"})
         await subscribe_events(websocket)
@@ -259,11 +347,17 @@ async def handle_connection(websocket, path):
     finally:
         print(f"客户端{connection_uuid}已断开连接")
         await conversation.close()
+        # 从 connections 和 information 字典中删除连接
+        del connections[connection_uuid]
+        del information[connection_uuid]
 
 async def main():
     async with websockets.serve(handle_connection, ip, port):
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
-        await asyncio.Future()  # 保持服务器运行
+        await asyncio.gather(
+            asyncio.Future(),  # 保持服务器运行
+            periodic_update()  # 启动定期更新任务
+        )
 
 if __name__ == "__main__":
     asyncio.run(main())

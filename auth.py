@@ -7,7 +7,7 @@ import threading
 
 # 密码和密钥可以从环境变量中获取
 PASSWORD = os.getenv("WEBSOCKET_PASSWORD", "123456")
-SECRET_KEY = os.getenv("SECRET_KEY", "123456")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 if not PASSWORD:
     raise ValueError("PASSWORD 环境变量未设置")
