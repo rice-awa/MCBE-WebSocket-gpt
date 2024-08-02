@@ -49,11 +49,22 @@ async def periodic_update():
         for connection_uuid, websocket in connections.items():
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(3)
-
-async def gpt_game_weather(websocket, dimension):
+async def gpt_player_localtion(websocket):
     global information
+    connection_uuid = websocket.uuid
+    player_location = information[connection_uuid].get("PlayerTransform_message").get("position", "")
+    player_name = information[connection_uuid].get("PlayerTransform_message").get("player_name", "")
+    json_data = {
+        "player_name": player_name,
+        "player_location": player_location,
+    }
+    return json.dumps(json_data)
 
-    weather = information.get(websocket.uuid, {}).get("game_weather", "")
+async def gpt_game_weather(websocket):
+    global information
+    connection_uuid = websocket.uuid
+    dimension = information[connection_uuid].get("PlayerTransform_message").get("dimension", "")
+    weather = information[connection_uuid].get("game_weather", "")
     print(f"收到天气信息: {weather}")
     
     json_data = {
@@ -182,12 +193,20 @@ async def handle_event_message(websocket, data):
         player = body.get('player', {})
         player_name = player.get('name', 'Unknown')
         player_pos = player.get('position', {})
-        dimension = player.get('dimension', 'Unknown')
+        dimension_id = player.get('dimension', 'Unknown')
         player_id = player.get('id', 'Unknown')
         player_color = player.get('color', 'Unknown')
         player_type = player.get('type', 'Unknown')
         player_variant = player.get('variant', 'Unknown')
         player_yRot = player.get('yRot', 'Unknown')
+
+        # 将 dimension 的数字 ID 转换为对应的字符串值
+        dimension_map = {
+            0: 'overworld',
+            1: 'nether',
+            2: 'the_end'
+        }
+        dimension = dimension_map.get(dimension_id, 'Unknown')
 
         # 获取位置坐标
         x = player_pos.get('x', 'Unknown')
@@ -224,7 +243,8 @@ async def handle_event_message(websocket, data):
         print(f"Player yRot: {player_yRot}")
         print(f"Dimension: {dimension}")
         print(f"Position - x: {x}, y: {y}, z: {z}")
-
+        print(f"存储在字典的信息： {information[connection_uuid]}")
+        
 async def handle_command_response(websocket, data):
     global information
     
@@ -365,7 +385,6 @@ async def handle_connection(websocket, path):
     
     # 初始化uuid对应的信息
     information[connection_uuid] = {
-        "dimension": '',
         "game_weather": '',
         "players": '',
         "PlayerTransform_message": ''
