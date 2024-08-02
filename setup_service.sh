@@ -7,12 +7,12 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 设置变量
-SERVICE_NAME="mydaemon"
+SERVICE_NAME="daemon-wsfunction-call"
 SCRIPT_PATH="$(pwd)/daemon.py"
 PYTHON_PATH="/usr/bin/python3"
 USER_NAME=$(whoami)
 GROUP_NAME=$(id -gn $USER_NAME)
-ENV_FILE="/etc/mydaemon.env"
+ENV_FILE="/etc/daemon-wsfunction-call.env"
 API_URL=\$1
 API_KEY=\$2
 
