@@ -21,7 +21,7 @@ system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和
 
 # 获取本地IP地址
 ip = "0.0.0.0"
-port = "8080"  # 端口
+port = "1145"  # 端口
 
 welcome_message_template = """-----------
 成功连接WebSocket服务器
