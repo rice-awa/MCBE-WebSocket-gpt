@@ -6,7 +6,7 @@ import psutil
 import os
 
 # 你要监控的Python脚本
-script_to_run = 'main_server.py'
+script_to_run = 'server_function-call.py'
 process = None
 
 def is_running(script_name):
