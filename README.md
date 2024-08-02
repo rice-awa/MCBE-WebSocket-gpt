@@ -1,5 +1,7 @@
 # MCBE Websocket Server 游戏内使用 GPT
 
+## 本页面为 function-call 版本
+
 [English](./README_EN.md)
 
 这个项目提供了一个基于 Python 的 Minecraft Bedrock Edition (**_MCBE_**) 服务器端的 WebSocket 服务，它可以获取玩家的**聊天信息**，并调用 GPT API 实现在游戏内使用**chatGPT**，最终将 GPT 回复传回到游戏中。项目使用 aiohttp 和 Websockets 异步。
@@ -8,7 +10,14 @@
 
 ## 更新
 
-**2024/7/31** (新增)
+**2024/8/2** (新增)
+
+- 1.新增 function-call 功能
+- 2.循环获取游戏数据，可能会导致服务器卡顿
+- 3.function-call 功能需要服务器端支持，目前仅支持服务器端，本地测试(main_local)无效
+- 4.function-call 不支持关闭上下文，请手动保存关闭(断开连接也会关闭)
+
+**2024/7/31**
 
 - 1.添加了身份验证功能
 - 2.增加了进程守护功能
