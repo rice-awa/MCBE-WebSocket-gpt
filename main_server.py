@@ -21,7 +21,7 @@ system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和
 
 # 获取本地IP地址
 ip = "0.0.0.0"
-port = "1145" # 端口
+port = "8080" # 端口
 
 welcome_message_template = """-----------
 成功连接WebSocket服务器
@@ -33,10 +33,10 @@ GPT模型:{model}
 -----------"""
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "天气"]
-
+EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 # 使用uuid映射的方式来存储信息
 information = {}
-connections = {}  # 用于存储所有活动的 WebSocket 连接
+connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
 
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
@@ -95,18 +95,19 @@ async def send_data(websocket, message):
 
 async def subscribe_events(websocket):
     """订阅事件"""
-    message = {
-        "body": {
-            "eventName": "PlayerMessage"
-        },
-        "header": {
-            "requestId": str(uuid.uuid4()),  # uuid
-            "messagePurpose": "subscribe",
-            "version": 1,
-            "EventName": "commandRequest"
+    for event_name in EVENT_LISTS:
+        message = {
+            "body": {
+                "eventName": event_name
+            },
+            "header": {
+                "requestId": str(uuid.uuid4()),
+                "messagePurpose": "subscribe",
+                "version": 1,
+                "EventName": "commandRequest"
+            }
         }
-    }
-    await send_data(websocket, message)
+        await send_data(websocket, message)
 
 async def send_game_message(websocket, message):
     """向游戏内发送聊天信息"""
@@ -167,7 +168,16 @@ async def send_script_data(websocket, content, messageid="server:data"):
         }
     }
     await send_data(websocket, message)
+async def handle_event_message(websocket, data):
+    """处理事件消息事件"""
+    body = data.get('body', {})
+    event_name = data['header']['eventName']
 
+    if event_name == "PlayerTransform":
+        player = body['player']
+        player_name = player['name']
+        player_pos = player['position']
+        dimension = player['dimension']
 async def handle_command_response(websocket, data):
     global information
     
@@ -286,12 +296,15 @@ async def handle_event(websocket, data, conversation):
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data, conversation)
     # 屏蔽玩家操作事件，避免刷屏打印数据
-    if event_name != "PlayerTransform":
-        print(data)
-        print()
+    # if event_name == "PlayerTransform":
+    #     pass
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
-    
+    print(data)
+    print()
+    if message_purpose == "event":
+        await handle_event_message(websocket, data)
+
 async def handle_connection(websocket, path):
     global connection_uuid
     connection_uuid = str(uuid.uuid4())
@@ -307,7 +320,8 @@ async def handle_connection(websocket, path):
     information[connection_uuid] = {
         "dimension": '',
         "game_weather": '',
-        "players": ''
+        "players": '',
+        "PlayerTransform_message": ''
     }
     
     # 将连接添加到 connections 字典
@@ -335,8 +349,9 @@ async def main():
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
             asyncio.Future(),  # 保持服务器运行
-            periodic_update()  # 启动定期更新任务
+            #periodic_update()  # 启动定期更新任务
         )
 
 if __name__ == "__main__":
     asyncio.run(main())
+

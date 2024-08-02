@@ -1,0 +1,41 @@
+# functions.py
+
+import asyncio
+
+# 定义一个模拟获取天气信息的本地函数
+async def get_current_weather(location, unit):
+    # 模拟调用天气API返回固定的天气信息
+    json_data = {
+        "location": location,
+        "temperature": 21,
+        "unit": unit,
+    }
+    await asyncio.sleep(1)  # 模拟异步调用
+    return f"It's 21 {unit} in {location}"
+
+# 定义Chat API接口所需的函数参数和描述
+functions = [
+    {
+        "name": "get_current_weather",  # 函数名称
+        "description": "获取指定地点的当前天气",  # 函数描述
+        "parameters": {  # 函数参数
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",  # 参数类型
+                    "description": "城市和地区，例如: 上海, 上海市",  # 参数描述
+                },
+                "unit": {
+                    "type": "string",  # 参数类型
+                    "enum": ["摄氏", "华氏"]  # 参数可选值
+                },
+            },
+            "required": ["location"],  # 必需参数
+        },
+    }
+]
+
+# 函数映射
+functions_map = {
+    "get_current_weather": get_current_weather,
+}

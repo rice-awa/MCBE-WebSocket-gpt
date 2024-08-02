@@ -1,0 +1,57 @@
+[
+    {
+        "role": "system",
+        "content": "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符"
+    },
+    {
+        "role": "user",
+        "content": "游戏玩家数量"
+    },
+    {
+        "role": "function",
+        "name": "gpt_game_players",
+        "content": "{\"players\": \"fantong7038\", \"dimension\": \"overworld\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "当前世界中有一名玩家，名字是fantong7038。请问还有什么需要帮助的吗？"
+    },
+    {
+        "role": "user",
+        "content": "游戏天气"
+    },
+    {
+        "role": "function",
+        "name": "gpt_game_weather",
+        "content": "{\"dimension\": \"overworld\", \"weather\": \"\\u4e0d\\u4e0b\\u96e8\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "当前世界的天气是晴天，没有下雨。如果有其他问题或需要帮助，请随时告诉我！"
+    },
+    {
+        "role": "user",
+        "content": "末地天气"
+    },
+    {
+        "role": "function",
+        "name": "gpt_game_weather",
+        "content": "{\"dimension\": \"the_end\", \"weather\": \"\\u4e0d\\u4e0b\\u96e8\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "末地的天气是晴天，没有下雨。需要注意的是，末地和下界在游戏中实际上没有天气变化。如果有其他问题或需要帮助，请告诉我！"
+    }
+]
