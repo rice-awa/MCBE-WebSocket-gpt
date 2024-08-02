@@ -36,7 +36,7 @@ COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本",
 
 # 使用uuid映射的方式来存储信息
 information = {}
-connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
+connections = {}  # 用于存储所有活动的 WebSocket 连接
 
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
