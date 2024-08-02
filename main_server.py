@@ -19,9 +19,6 @@ if not api_key:
 model = "gpt-4o" # gpt模型
 system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
-# 上下文（临时）
-enable_history = False # 默认关闭
-
 # 获取本地IP地址
 ip = "0.0.0.0"
 port = "8080" # 端口
@@ -30,12 +27,12 @@ welcome_message_template = """-----------
 成功连接WebSocket服务器
 服务器ip:{ip}
 端口:{port}
-GPT上下文:{enable_history}
+GPT上下文:function-call不支持关闭上下文，请使用GPT保存
 GPT模型:{model}
 连接UUID:{uuid}
 -----------"""
 
-COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本", "测试天气", "天气"]
+COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "天气"]
 
 # 使用uuid映射的方式来存储信息
 information = {}
@@ -196,7 +193,7 @@ async def handle_command_response(websocket, data):
             print("未识别的命令响应")
 
 async def handle_player_message(websocket, data, conversation):
-    global enable_history, connection_uuid
+    global connection_uuid
     """处理玩家消息事件"""
     sender = data['body']['sender']
     message = data['body']['message']
@@ -230,8 +227,6 @@ async def handle_player_message(websocket, data, conversation):
                 await handle_gpt_script(websocket, content, conversation)
             elif command == "GPT 保存":
                 await handle_gpt_save(websocket, conversation)
-            elif command == "GPT 上下文":
-                await handle_gpt_context(websocket, content)
             elif command == "运行命令":
                 await handle_run_command(websocket, content)
             elif command == "测试天气":
@@ -271,28 +266,12 @@ async def handle_gpt_script(websocket, content, conversation):
 
 async def handle_gpt_save(websocket, conversation):
     if not conversation:
-        await send_game_message(websocket, "上下文已关闭，无法保存！")
+        await send_game_message(websocket, "没有对话实例，无法保存！")
         return 
     else:
         conversation.save_conversation()
     await conversation.restart()
     await send_game_message(websocket, "对话重启，数据已保存！")
-
-async def handle_gpt_context(websocket, content):
-    global enable_history
-    
-    if content == "启用":
-        enable_history = True
-        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
-        await send_game_message(websocket, "GPT上下文已启用，注意tokens消耗!")
-    elif content == "关闭":
-        enable_history = False
-        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
-        await send_game_message(websocket, "GPT上下文已关闭")
-    elif content == "状态":
-        await send_game_message(websocket, f"GPT上下文状态: {enable_history}")
-    else:
-        await send_game_message(websocket, "无效的上下文指令，请输入启用或关闭")
 
 async def handle_run_command(websocket, content):
     command = content
@@ -320,7 +299,7 @@ async def handle_connection(websocket, path):
     print(f"客户端:{connection_uuid}已连接")
     conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket,system_prompt=system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
-        ip=ip, port=port, enable_history=enable_history, model=model, uuid=connection_uuid
+        ip=ip, port=port, model=model, uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
     
