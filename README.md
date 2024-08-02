@@ -99,7 +99,7 @@
 - **API 设置**：
 
   - 本地测试：在 `main_local.py` 中设置 `api_url` 和 `api_key`。
-  - 服务器：使用 `setup_service.sh` 脚本设置环境变量`API_URL` 和 `API_KEY`。
+  - 服务器：使用 `setup_service.sh` 脚本设置环境变量`API_URL` 和 `API_KEY`。注意：需要把`$`删掉，替换`\`后面的值即可
   - 这里推荐使用第三方转发 key，推荐使用这个 [apikey](https://burn.hair/) 当然官方 APIKEY 也可以。
 
 - **身份验证**：
