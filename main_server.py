@@ -16,12 +16,12 @@ if not api_url:
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "gpt-4o" # gpt模型
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
+model = "gpt-4o"  # gpt模型
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符"  # 系统提示词
 
 # 获取本地IP地址
 ip = "0.0.0.0"
-port = "8080" # 端口
+port = "8080"  # 端口
 
 welcome_message_template = """-----------
 成功连接WebSocket服务器
@@ -30,7 +30,8 @@ welcome_message_template = """-----------
 GPT上下文:function-call不支持关闭上下文，请使用GPT保存
 GPT模型:{model}
 连接UUID:{uuid}
------------"""
+-----------
+"""
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "天气"]
 EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
@@ -168,16 +169,62 @@ async def send_script_data(websocket, content, messageid="server:data"):
         }
     }
     await send_data(websocket, message)
+
 async def handle_event_message(websocket, data):
     """处理事件消息事件"""
+    global information
+
     body = data.get('body', {})
-    event_name = data['header']['eventName']
+    header = data.get('header', {})
+    event_name = header.get('eventName', '')
 
     if event_name == "PlayerTransform":
-        player = body['player']
-        player_name = player['name']
-        player_pos = player['position']
-        dimension = player['dimension']
+        player = body.get('player', {})
+        player_name = player.get('name', 'Unknown')
+        player_pos = player.get('position', {})
+        dimension = player.get('dimension', 'Unknown')
+        player_id = player.get('id', 'Unknown')
+        player_color = player.get('color', 'Unknown')
+        player_type = player.get('type', 'Unknown')
+        player_variant = player.get('variant', 'Unknown')
+        player_yRot = player.get('yRot', 'Unknown')
+
+        # 获取位置坐标
+        x = player_pos.get('x', 'Unknown')
+        y = player_pos.get('y', 'Unknown')
+        z = player_pos.get('z', 'Unknown')
+
+        # 构建JSON对象
+        player_transform_message = {
+            "player_name": player_name,
+            "player_id": player_id,
+            "player_color": player_color,
+            "player_type": player_type,
+            "player_variant": player_variant,
+            "player_yRot": player_yRot,
+            "dimension": dimension,
+            "position": {
+                "x": x,
+                "y": y,
+                "z": z
+            }
+        }
+
+        # 存储在information中
+        connection_uuid = websocket.uuid
+        if connection_uuid in information:
+            information[connection_uuid]["PlayerTransform_message"] = player_transform_message
+
+        # 打印或处理获取到的信息
+        print(f"Player Name: {player_name}")
+        print(f"Player ID: {player_id}")
+        print(f"Player Color: {player_color}")
+        print(f"Player Type: {player_type}")
+        print(f"Player Variant: {player_variant}")
+        print(f"Player yRot: {player_yRot}")
+        print(f"Dimension: {dimension}")
+        print(f"Position - x: {x}, y: {y}, z: {z}")
+
 async def handle_command_response(websocket, data):
     global information
     
@@ -310,7 +357,7 @@ async def handle_connection(websocket, path):
     connection_uuid = str(uuid.uuid4())
     websocket.uuid = connection_uuid
     print(f"客户端:{connection_uuid}已连接")
-    conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket,system_prompt=system_prompt, enable_logging=True)
+    conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket, system_prompt=system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
         ip=ip, port=port, model=model, uuid=connection_uuid
     )
@@ -354,4 +401,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
