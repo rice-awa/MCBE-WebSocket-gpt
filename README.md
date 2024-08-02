@@ -99,7 +99,7 @@
 - **API 设置**：
 
   - 本地测试：在 `main_local.py` 中设置 `api_url` 和 `api_key`。
-  - 服务器：使用 `setup_service.sh` 脚本设置环境变量。
+  - 服务器：使用 `setup_service.sh` 脚本设置环境变量`API_URL` 和 `API_KEY`。
   - 这里推荐使用第三方转发 key，推荐使用这个 [apikey](https://burn.hair/) 当然官方 APIKEY 也可以。
 
 - **身份验证**：
@@ -119,7 +119,7 @@
    在 Minecraft 聊天框输入 `/wsserver <服务器ip>:<服务器端口>`。
    ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
 3. **登录**：
-   使用 `#登录 <密码>` 进行身份验证。
+   使用 `#登录 <密码>` 进行身份验证(默认 123456)。
    ![登录验证](https://s3.bmp.ovh/imgs/2024/07/31/82bdff9f34ad14d6.png)
 
 4. **使用聊天命令**：
@@ -135,7 +135,7 @@
 
 5. **保存对话**：
 
-   - 输入`GPT 保存`来保存对话。注意"保存"的后面不要有空格
+   - 输入`GPT 保存`来保存对话。
    - 保存和关闭会话后，会在根目录生成对话记录和日志。
 
    ![对话日志](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
