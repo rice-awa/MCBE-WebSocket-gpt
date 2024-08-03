@@ -38,6 +38,7 @@ EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 # 使用uuid映射的方式来存储信息
 information = {}
 connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
+pending_commands = {}  # 新增，用于存储待处理的命令响应
 
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
@@ -54,11 +55,15 @@ async def periodic_update():
         await asyncio.sleep(10)
 
 async def gpt_run_command(websocket, command):
-    print(f"已发送命令: {command}")
-    await run_command(websocket, command)
-    #asyncio.sleep(3)
-    
-    return f"已发送命令: {command}，命令稍后执行"
+    print(f"正在发送命令: {command}")
+    # await run_command(websocket, "list")
+    # await asyncio.sleep(1)
+    result = await run_command(websocket, command)
+    await asyncio.sleep(3)
+    if result:
+        return result
+    else:
+        return f"已发送命令: {command}，但执行失败"
 
 async def gpt_get_time(websocket, dimension):
     global information
@@ -169,8 +174,9 @@ async def send_game_message(websocket, message):
     await send_data(websocket, game_message)
 
 async def run_command(websocket, command):
-    """运行命令"""
+    """运行命令并等待响应"""
     print(f"命令{command}开始发送")
+    request_id = str(uuid.uuid4())
     message = {
         "body": {
             "origin": {
@@ -180,13 +186,21 @@ async def run_command(websocket, command):
             "version": 17039360
         },
         "header": {
-            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",  # uuidstr(uuid.uuid4())
+            "requestId": request_id,
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
         }
     }
     await send_data(websocket, message)
+
+    # 创建一个Future对象并将其存储在pending_commands字典中
+    future = asyncio.get_event_loop().create_future()
+    pending_commands[request_id] = future
+
+    # 等待命令响应并返回结果
+    response = await future
+    return response
 
 async def send_script_data(websocket, content, messageid="server:data"):
     """使用脚本事件命令给游戏发送数据"""
@@ -273,24 +287,23 @@ async def handle_event_message(websocket, data):
             # 添加新的玩家信息
             information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
 
-        # 打印或处理获取到的信息
-        # print(f"Player Name: {player_name}")
-        # print(f"Player ID: {player_id}")
-        # print(f"Player Color: {player_color}")
-        # print(f"Player Type: {player_type}")
-        # print(f"Player Variant: {player_variant}")
-        # print(f"Player yRot: {player_yRot}")
-        # print(f"Dimension: {dimension}")
-        # print(f"Position - x: {x}, y: {y}, z: {z}")
-        print(f"存储在字典的信息： {information[connection_uuid]}")
+        #print(f"存储在字典的信息： {information[connection_uuid]}")
         #print(f"PlayerTransform_messages: {information[connection_uuid]['PlayerTransform_messages']}")
 
         
 async def handle_command_response(websocket, data):
     global information
+    global pending_commands
     
     print("命令响应处理开始")
     body = data.get('body', {})
+    header = data.get('header', {})
+    request_id = header.get('requestId', '')
+
+    if request_id in pending_commands:
+        future = pending_commands.pop(request_id)
+        future.set_result(body)  # 设置命令响应结果
+
     if 'statusMessage' in body:
         message = body['statusMessage']
         print(f"命令响应: {message}")
@@ -403,7 +416,9 @@ async def handle_gpt_save(websocket, conversation):
 
 async def handle_run_command(websocket, content):
     command = content
-    await run_command(websocket, command)
+    result = await run_command(websocket, command)
+    await send_game_message(websocket, f"运行结果:aaa")
+    #await run_command(websocket, command)
 
 async def handle_script_run_command(websocket, content):
     command = content
@@ -470,7 +485,7 @@ async def main():
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
             asyncio.Future(),  # 保持服务器运行
-            periodic_update()  # 启动定期更新任务
+            #periodic_update()  # 启动定期更新任务
         )
 
 if __name__ == "__main__":
