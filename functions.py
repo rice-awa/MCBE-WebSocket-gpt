@@ -49,5 +49,19 @@ functions = [
             "required": ["dimension"]  # 必需参数
         }
     },
+    {
+        "name": "gpt_run_command",  # 函数名称
+        "description": "能够在游戏执行命令，命令须符合MCBE的命令格式，否则可能无效",  # 函数描述
+        "parameters": {  # 函数参数
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",  # 参数类型
+                    "description": "需要执行的命令:'say hello,world!'"  # 参数描述
+                }
+            },
+            "required": ["command"]  # 必需参数
+        }
+    },
 ]
 

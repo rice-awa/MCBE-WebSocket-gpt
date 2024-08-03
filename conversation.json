@@ -1,0 +1,74 @@
+[
+    {
+        "role": "system",
+        "content": "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符"
+    },
+    {
+        "role": "user",
+        "content": "清除所有实体，玩家除外"
+    },
+    {
+        "role": "function",
+        "name": "gpt_run_command",
+        "content": "已发送命令: kill @e[type=!player]，命令稍后执行"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "所有非玩家实体已经被清除。如果还有其他需要帮助的，请随时告诉我！"
+    },
+    {
+        "role": "user",
+        "content": "在我的附近生成一只僵尸"
+    },
+    {
+        "role": "function",
+        "name": "gpt_game_players",
+        "content": "[{\"all_players\": \"\"}, {\"player_name\": \"fantong7038\", \"player_yRot\": -172.1862182617188, \"player_dimension\": \"overworld\", \"position\": {\"x\": -29.20726585388184, \"y\": -58.37998962402344, \"z\": 6.588986396789551}}]"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "function",
+        "name": "gpt_run_command",
+        "content": "已发送命令: summon zombie -29.2 -58.4 6.6，命令稍后执行"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "一只僵尸已经在你附近生成了！如果还有其他需求，请告诉我。"
+    },
+    {
+        "role": "user",
+        "content": "放置一个钻石块"
+    },
+    {
+        "role": "assistant",
+        "content": "请问你希望在什么位置放置钻石块？可以提供具体的坐标吗，或者我可以帮你放置在你的当前位置。"
+    },
+    {
+        "role": "user",
+        "content": "放置一个钻石块，在我现在的位置"
+    },
+    {
+        "role": "function",
+        "name": "gpt_run_command",
+        "content": "已发送命令: setblock -29.2 -58.4 6.6 diamond_block，命令稍后执行"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "一个钻石块已经放置在你的当前位置。如果还有其他需要帮助的，请随时告诉我！"
+    }
+]

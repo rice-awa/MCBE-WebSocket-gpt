@@ -33,7 +33,7 @@ GPT模型:{model}
 -----------
 """
 
-COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "天气"]
+COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令"]
 EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 # 使用uuid映射的方式来存储信息
 information = {}
@@ -49,6 +49,13 @@ async def periodic_update():
         for connection_uuid, websocket in connections.items():
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(10)
+
+async def gpt_run_command(websocket, command):
+    print(f"已发送命令: {command}")
+    await run_command(websocket, command)
+    #asyncio.sleep(3)
+    
+    return f"已发送命令: {command}，命令稍后执行"
 
 async def gpt_get_time(websocket, dimension):
     global information
@@ -93,7 +100,8 @@ async def gpt_game_players(websocket):
 functions_map = {
     "gpt_game_weather": gpt_game_weather,
     "gpt_game_players": gpt_game_players,
-    "gpt_get_time": gpt_get_time
+    "gpt_get_time": gpt_get_time,
+    "gpt_run_command": gpt_run_command
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -329,8 +337,8 @@ async def handle_player_message(websocket, data, conversation):
                 await handle_run_command(websocket, content)
             elif command == "测试天气":
                 await send_game_message(websocket, f"测试结果: {information[connection_uuid]['game_weather']}")
-            elif command == "天气":
-                await send_game_message(websocket, f"天气命令已发送")
+            elif command == "脚本命令":
+                await handle_script_run_command(websocket, content)
 
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
@@ -347,7 +355,7 @@ async def handle_gpt_chat(websocket, content, conversation):
     gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
     # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
-    sentences = re.split(r'(?<=[。.])', gpt_message)
+    sentences = re.split(r'(?<=[。])', gpt_message)
     
     for sentence in sentences:
         if sentence.strip():  # 跳过空句子
@@ -374,6 +382,10 @@ async def handle_gpt_save(websocket, conversation):
 async def handle_run_command(websocket, content):
     command = content
     await run_command(websocket, command)
+
+async def handle_script_run_command(websocket, content):
+    command = content
+    await send_script_data(websocket, command, "server:run_command")
 
 async def handle_event(websocket, data, conversation):
     """根据事件类型处理事件"""
@@ -434,7 +446,7 @@ async def main():
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
             asyncio.Future(),  # 保持服务器运行
-            periodic_update()  # 启动定期更新任务
+            #periodic_update()  # 启动定期更新任务
         )
 
 if __name__ == "__main__":
