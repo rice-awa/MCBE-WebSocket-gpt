@@ -42,6 +42,9 @@ connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
     await run_command(websocket, "list")
+    await asyncio.sleep(0.5)
+    await run_command(websocket, "time query day")
+    await run_command(websocket, "time query gametime")
     print(f"已发送信息查询命令给 {connection_uuid}")
 
 async def periodic_update():
@@ -59,7 +62,16 @@ async def gpt_run_command(websocket, command):
 
 async def gpt_get_time(websocket, dimension):
     global information
-    return f"当前维度{dimension}，时间:20:00"
+    connection_uuid = websocket.uuid
+    gametime = information[connection_uuid]["game_time"]
+    gameday = information[connection_uuid]["game_day"]
+
+    json_data = {
+        "dimension": dimension,
+        "time": gametime,
+        "day": gameday,
+    }
+    return json.dumps(json_data)
 
 async def gpt_game_weather(websocket, dimension):
     global information
@@ -74,7 +86,7 @@ async def gpt_game_weather(websocket, dimension):
     }
     return json.dumps(json_data)
 
-async def gpt_game_players(websocket):
+async def gpt_game_players(websocket, dimension):
     global information
 
     players = information.get(websocket.uuid, {})["players"]
@@ -284,17 +296,27 @@ async def handle_command_response(websocket, data):
         print(f"命令响应: {message}")
         
         message_part = message.split('：', 1)
+        message_part_space = message.split(' ', 1)
+
+        connection_uuid = websocket.uuid
+
         if message_part[0] == '天气状态是':
             weather = message_part[1].strip()
-            connection_uuid = websocket.uuid
             if connection_uuid in information:
                 information[connection_uuid]["game_weather"] = weather
             print(f"当前天气: {weather}")
-        if message_part[0][9:13] == '玩家在线':
+        elif message_part[0][9:13] == '玩家在线':
             players = message_part[1].strip()
-            connection_uuid = websocket.uuid
             if connection_uuid in information:
                 information[connection_uuid]["players"] = players
+        elif message_part_space[0] == '游戏时间为':
+            gametime = message_part_space[1].strip()
+            if connection_uuid in information:
+                information[connection_uuid]["game_time"] = gametime
+        elif message_part_space[0] == '日期为':
+            gameday = message_part_space[1].strip()
+            if connection_uuid in information:
+                information[connection_uuid]["game_day"] = gameday
         else:
             print("未识别的命令响应")
 
@@ -418,6 +440,8 @@ async def handle_connection(websocket, path):
     # 初始化uuid对应的信息
     information[connection_uuid] = {
         "game_weather": '',
+        "game_time": '',
+        "game_day":'',
         "players": ''
     }
     
@@ -446,7 +470,7 @@ async def main():
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
             asyncio.Future(),  # 保持服务器运行
-            #periodic_update()  # 启动定期更新任务
+            periodic_update()  # 启动定期更新任务
         )
 
 if __name__ == "__main__":

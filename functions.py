@@ -36,7 +36,7 @@ functions = [
     },
     {
         "name": "gpt_get_time",  # 函数名称
-        "description": "获取当前维度的时间",  # 函数描述
+        "description": "获取当前维度的时间，游戏时间gametime按tick算，day为游戏天数，玩家询问时间时，请直接告诉玩家换算后的结果，如：早上，正午，晚上",  # 函数描述
         "parameters": {  # 函数参数
             "type": "object",
             "properties": {
