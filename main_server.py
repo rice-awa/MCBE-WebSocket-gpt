@@ -53,11 +53,14 @@ async def periodic_update():
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(10)
 
+async def gpt_player_near_entity(websocket, player_name):
+    global information
+    connection_uuid = websocket.uuid
+
+
 async def gpt_run_command(websocket, command):
     print(f"已发送命令: {command}")
     await run_command(websocket, command)
-    #asyncio.sleep(3)
-    
     return f"已发送命令: {command}，命令稍后执行"
 
 async def gpt_get_time(websocket, dimension):
@@ -273,19 +276,9 @@ async def handle_event_message(websocket, data):
             # 添加新的玩家信息
             information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
 
-        # 打印或处理获取到的信息
-        # print(f"Player Name: {player_name}")
-        # print(f"Player ID: {player_id}")
-        # print(f"Player Color: {player_color}")
-        # print(f"Player Type: {player_type}")
-        # print(f"Player Variant: {player_variant}")
-        # print(f"Player yRot: {player_yRot}")
-        # print(f"Dimension: {dimension}")
-        # print(f"Position - x: {x}, y: {y}, z: {z}")
         print(f"存储在字典的信息： {information[connection_uuid]}")
         #print(f"PlayerTransform_messages: {information[connection_uuid]['PlayerTransform_messages']}")
 
-        
 async def handle_command_response(websocket, data):
     global information
     
@@ -327,6 +320,7 @@ async def handle_player_message(websocket, data, conversation):
     message = data['body']['message']
 
     if sender and message:
+
         print(f"玩家 {sender} 说: {message}")
 
         command, content = parse_message(message)
@@ -364,6 +358,14 @@ async def handle_player_message(websocket, data, conversation):
 
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
+
+        if sender == "脚本引擎":
+            if message.startswith("[脚本引擎]"):
+                content = message.split(" ", 1)[1].strip()
+            else:
+                content = message.strip()
+            print(f"脚本引擎说: {content}")
+            await handle_script(websocket, content)
 
 def parse_message(message):
     """解析消息，返回指令和实际内容"""
@@ -408,6 +410,12 @@ async def handle_run_command(websocket, content):
 async def handle_script_run_command(websocket, content):
     command = content
     await send_script_data(websocket, command, "server:run_command")
+
+async def handle_script(websocket, message):
+    # 使用 json.dumps 确保字符串正确转义
+    sanitized_message = json.dumps(message)
+    print(f"handle_script输出: {sanitized_message}")
+    await send_script_data(websocket, sanitized_message, "server:script")
 
 async def handle_event(websocket, data, conversation):
     """根据事件类型处理事件"""
