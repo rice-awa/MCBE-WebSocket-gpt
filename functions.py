@@ -63,5 +63,19 @@ functions = [
             "required": ["command"]  # 必需参数
         }
     },
+    {
+        "name": "gpt_world_entity",  # 函数名称
+        "description": "此函数能够将实体加入获取队列，能获取队列中实体的id，坐标等信息，实体id参数不需要前缀，如果return为空，需要重新调用该函数刷新",  # 函数描述
+        "parameters": {  # 函数参数
+            "type": "object",
+            "properties": {
+                "entityid": {
+                    "type": "string",  # 参数类型
+                    "description": "查询的实体，例如：pig , zombie"  # 参数描述
+                }
+            },
+            "required": ["entityid"]  # 必需参数
+        }
+    },
 ]
 

@@ -40,11 +40,15 @@ information = {}
 connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
 
 async def get_game_information(websocket, connection_uuid):
+    global information
     await run_command(websocket, "weather query")
     await run_command(websocket, "list")
     await asyncio.sleep(0.5)
     await run_command(websocket, "time query day")
     await run_command(websocket, "time query gametime")
+    await asyncio.sleep(0.5)
+    entityid = information[connection_uuid]["need_entityid"]
+    await send_script_data(websocket, f"check_entity {entityid}", "server:script")
     print(f"已发送信息查询命令给 {connection_uuid}")
 
 async def periodic_update():
@@ -53,9 +57,14 @@ async def periodic_update():
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(10)
 
-async def gpt_player_near_entity(websocket, player_name):
+async def gpt_world_entity(websocket, entityid):
     global information
     connection_uuid = websocket.uuid
+    entity_info = information[connection_uuid]["entity_info"]
+    information[connection_uuid]["need_entityid"] = entityid
+    if entity_info == '':
+        entity_info = {"stautus": "正在查询实体信息，下次调用可获取"}
+    return json.dumps(entity_info)
 
 
 async def gpt_run_command(websocket, command):
@@ -89,7 +98,7 @@ async def gpt_game_weather(websocket, dimension):
     }
     return json.dumps(json_data)
 
-async def gpt_game_players(websocket, dimension):
+async def gpt_game_players(websocket):
     global information
 
     players = information.get(websocket.uuid, {})["players"]
@@ -116,7 +125,8 @@ functions_map = {
     "gpt_game_weather": gpt_game_weather,
     "gpt_game_players": gpt_game_players,
     "gpt_get_time": gpt_get_time,
-    "gpt_run_command": gpt_run_command
+    "gpt_run_command": gpt_run_command,
+    "gpt_world_entity": gpt_world_entity
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -359,11 +369,15 @@ async def handle_player_message(websocket, data, conversation):
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
 
+        if sender == "工具人":
+            if message.startswith("entity_position:"):
+                content = message.split(":", 1)[1].strip()
+                print(f"工具人说: {content}")
+                information[connection_uuid]["entity_info"] = content
+            
         if sender == "脚本引擎":
             if message.startswith("[脚本引擎]"):
                 content = message.split(" ", 1)[1].strip()
-            else:
-                content = message.strip()
             print(f"脚本引擎说: {content}")
             await handle_script(websocket, content)
 
@@ -412,10 +426,15 @@ async def handle_script_run_command(websocket, content):
     await send_script_data(websocket, command, "server:run_command")
 
 async def handle_script(websocket, message):
+    global information
     # 使用 json.dumps 确保字符串正确转义
+    connection_uuid = websocket.uuid
     sanitized_message = json.dumps(message)
     print(f"handle_script输出: {sanitized_message}")
-    await send_script_data(websocket, sanitized_message, "server:script")
+    await send_game_message(websocket, sanitized_message)
+    # if sanitized_message.startswith("entity_position: "):
+    #     information[connection_uuid]["entity_info"] = sanitized_message
+    #await send_script_data(websocket, sanitized_message, "server:script")
 
 async def handle_event(websocket, data, conversation):
     """根据事件类型处理事件"""
@@ -450,7 +469,9 @@ async def handle_connection(websocket, path):
         "game_weather": '',
         "game_time": '',
         "game_day":'',
-        "players": ''
+        "players": '',
+        "need_entityid": '',
+        "entity_info" : ''
     }
     
     # 将连接添加到 connections 字典

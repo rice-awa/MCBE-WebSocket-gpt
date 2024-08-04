@@ -5,12 +5,30 @@
     },
     {
         "role": "user",
-        "content": "清除所有实体，玩家除外"
+        "content": "附近有关pig的坐标"
     },
     {
         "role": "function",
-        "name": "gpt_run_command",
-        "content": "已发送命令: kill @e[type=!player]，命令稍后执行"
+        "name": "gpt_world_entity",
+        "content": "{\"stautus\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u4e0b\\u6b21\\u8c03\\u7528\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"stautus\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u4e0b\\u6b21\\u8c03\\u7528\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"stautus\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u4e0b\\u6b21\\u8c03\\u7528\\u53ef\\u83b7\\u53d6\"}"
     },
     {
         "role": "user",
@@ -18,25 +36,33 @@
     },
     {
         "role": "assistant",
-        "content": "所有非玩家实体已经被清除。如果还有其他需要帮助的，请随时告诉我！"
+        "content": "目前还在查询附近猪的坐标，请稍等片刻。你可以继续进行其他活动，我会尽快更新信息。"
     },
     {
         "role": "user",
-        "content": "在我的附近生成一只僵尸"
+        "content": "附近有关pig的坐标"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "\"{\\\"-4294967282\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-45,\\\"y\\\":96,\\\"z\\\":15}},\\\"-4294967278\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-48,\\\"y\\\":98,\\\"z\\\":31}},\\\"-4294967264\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-8,\\\"y\\\":108,\\\"z\\\":96}}}\""
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "附近有几只猪，以下是它们的坐标：\n\n1. 第一只猪在 (-45, 96, 15)\n2. 第二只猪在 (-48, 98, 31)\n3. 第三只猪在 (-8, 108, 96)\n\n你可以根据这些坐标去寻找它们。"
+    },
+    {
+        "role": "user",
+        "content": "在线玩家信息"
     },
     {
         "role": "function",
         "name": "gpt_game_players",
-        "content": "[{\"all_players\": \"\"}, {\"player_name\": \"fantong7038\", \"player_yRot\": -172.1862182617188, \"player_dimension\": \"overworld\", \"position\": {\"x\": -29.20726585388184, \"y\": -58.37998962402344, \"z\": 6.588986396789551}}]"
-    },
-    {
-        "role": "user",
-        "content": ""
-    },
-    {
-        "role": "function",
-        "name": "gpt_run_command",
-        "content": "已发送命令: summon zombie -29.2 -58.4 6.6，命令稍后执行"
+        "content": "[{\"all_players\": \"fantong7038, \\u5de5\\u5177\\u4eba\"}, {\"player_name\": \"fantong7038\", \"player_yRot\": -179.8509826660156, \"player_dimension\": \"overworld\", \"position\": {\"x\": -41.78915786743164, \"y\": 101.6200103759766, \"z\": 25.05591583251953}}, {\"player_name\": \"\\u5de5\\u5177\\u4eba\", \"player_yRot\": -43.183349609375, \"player_dimension\": \"overworld\", \"position\": {\"x\": -40.72219848632812, \"y\": 100.6200103759766, \"z\": 21.27782249450684}}]"
     },
     {
         "role": "user",
@@ -44,31 +70,6 @@
     },
     {
         "role": "assistant",
-        "content": "一只僵尸已经在你附近生成了！如果还有其他需求，请告诉我。"
-    },
-    {
-        "role": "user",
-        "content": "放置一个钻石块"
-    },
-    {
-        "role": "assistant",
-        "content": "请问你希望在什么位置放置钻石块？可以提供具体的坐标吗，或者我可以帮你放置在你的当前位置。"
-    },
-    {
-        "role": "user",
-        "content": "放置一个钻石块，在我现在的位置"
-    },
-    {
-        "role": "function",
-        "name": "gpt_run_command",
-        "content": "已发送命令: setblock -29.2 -58.4 6.6 diamond_block，命令稍后执行"
-    },
-    {
-        "role": "user",
-        "content": ""
-    },
-    {
-        "role": "assistant",
-        "content": "一个钻石块已经放置在你的当前位置。如果还有其他需要帮助的，请随时告诉我！"
+        "content": "当前在线的玩家有两位：\n\n1. **fantong7038**\n   - 维度: 主世界 (overworld)\n   - 坐标: (-41.8, 101.6, 25.1)\n\n2. **工具人**\n   - 维度: 主世界 (overworld)\n   - 坐标: (-40.7, 100.6, 21.3)\n\n你可以根据这些信息找到他们。"
     }
 ]
