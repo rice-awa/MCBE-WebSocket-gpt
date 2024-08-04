@@ -5,25 +5,7 @@
     },
     {
         "role": "user",
-        "content": "附近有关pig的坐标"
-    },
-    {
-        "role": "function",
-        "name": "gpt_world_entity",
-        "content": "{\"stautus\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u4e0b\\u6b21\\u8c03\\u7528\\u53ef\\u83b7\\u53d6\"}"
-    },
-    {
-        "role": "user",
-        "content": ""
-    },
-    {
-        "role": "function",
-        "name": "gpt_world_entity",
-        "content": "{\"stautus\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u4e0b\\u6b21\\u8c03\\u7528\\u53ef\\u83b7\\u53d6\"}"
-    },
-    {
-        "role": "user",
-        "content": ""
+        "content": "附近有多少只猪"
     },
     {
         "role": "function",
@@ -36,16 +18,16 @@
     },
     {
         "role": "assistant",
-        "content": "目前还在查询附近猪的坐标，请稍等片刻。你可以继续进行其他活动，我会尽快更新信息。"
+        "content": "我正在查询附近的猪的数量，请稍等片刻。"
     },
     {
         "role": "user",
-        "content": "附近有关pig的坐标"
+        "content": "附近有多少只猪"
     },
     {
         "role": "function",
         "name": "gpt_world_entity",
-        "content": "\"{\\\"-4294967282\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-45,\\\"y\\\":96,\\\"z\\\":15}},\\\"-4294967278\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-48,\\\"y\\\":98,\\\"z\\\":31}},\\\"-4294967264\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-8,\\\"y\\\":108,\\\"z\\\":96}}}\""
+        "content": "\"{\\\"-4294967233\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-24,\\\"y\\\":89,\\\"z\\\":1}},\\\"-4294967232\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-25,\\\"y\\\":89,\\\"z\\\":1}},\\\"-4294967230\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-27,\\\"y\\\":92,\\\"z\\\":-8}},\\\"-4294967226\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-45,\\\"y\\\":98,\\\"z\\\":39}}}\""
     },
     {
         "role": "user",
@@ -53,16 +35,33 @@
     },
     {
         "role": "assistant",
-        "content": "附近有几只猪，以下是它们的坐标：\n\n1. 第一只猪在 (-45, 96, 15)\n2. 第二只猪在 (-48, 98, 31)\n3. 第三只猪在 (-8, 108, 96)\n\n你可以根据这些坐标去寻找它们。"
+        "content": "附近有4只猪。它们分别位于以下坐标：\n\n1. (-24, 89, 1)\n2. (-25, 89, 1)\n3. (-27, 92, -8)\n4. (-45, 98, 39)\n\n希望这些信息对你有帮助！"
     },
     {
         "role": "user",
-        "content": "在线玩家信息"
+        "content": "附近有多少只猪，最新"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "\"{\\\"-4294967233\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-20,\\\"y\\\":91,\\\"z\\\":3}},\\\"-4294967230\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-27,\\\"y\\\":90,\\\"z\\\":1}},\\\"-4294967232\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-19,\\\"y\\\":94,\\\"z\\\":5}},\\\"-4294967224\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-29,\\\"y\\\":101,\\\"z\\\":42}},\\\"-4294967226\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-49,\\\"y\\\":97,\\\"z\\\":32}},\\\"-4294967225\\\":{\\\"typeId\\\":\\\"minecraft:pig\\\",\\\"position\\\":{\\\"x\\\":-48,\\\"y\\\":97,\\\"z\\\":34}}}\""
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "附近现在有6只猪。它们分别位于以下坐标：\n\n1. (-20, 91, 3)\n2. (-27, 90, 1)\n3. (-19, 94, 5)\n4. (-29, 101, 42)\n5. (-49, 97, 32)\n6. (-48, 97, 34)\n\n希望这些信息对你有帮助！"
+    },
+    {
+        "role": "user",
+        "content": "哪个离我最近？"
     },
     {
         "role": "function",
         "name": "gpt_game_players",
-        "content": "[{\"all_players\": \"fantong7038, \\u5de5\\u5177\\u4eba\"}, {\"player_name\": \"fantong7038\", \"player_yRot\": -179.8509826660156, \"player_dimension\": \"overworld\", \"position\": {\"x\": -41.78915786743164, \"y\": 101.6200103759766, \"z\": 25.05591583251953}}, {\"player_name\": \"\\u5de5\\u5177\\u4eba\", \"player_yRot\": -43.183349609375, \"player_dimension\": \"overworld\", \"position\": {\"x\": -40.72219848632812, \"y\": 100.6200103759766, \"z\": 21.27782249450684}}]"
+        "content": "[{\"all_players\": \"fantong7038, \\u5de5\\u5177\\u4eba\"}, {\"player_name\": \"fantong7038\", \"player_yRot\": 2.934234619140625, \"player_dimension\": \"overworld\", \"position\": {\"x\": -37.06112289428711, \"y\": 100.6200103759766, \"z\": 21.7584400177002}}]"
     },
     {
         "role": "user",
@@ -70,6 +69,6 @@
     },
     {
         "role": "assistant",
-        "content": "当前在线的玩家有两位：\n\n1. **fantong7038**\n   - 维度: 主世界 (overworld)\n   - 坐标: (-41.8, 101.6, 25.1)\n\n2. **工具人**\n   - 维度: 主世界 (overworld)\n   - 坐标: (-40.7, 100.6, 21.3)\n\n你可以根据这些信息找到他们。"
+        "content": "根据你当前的位置（-37.1, 100.6, 21.8），最近的一只猪位于坐标 (-27, 90, 1)，大约在你附近10个方块的范围内。\n\n希望这对你有帮助！"
     }
 ]

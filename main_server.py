@@ -63,7 +63,7 @@ async def gpt_world_entity(websocket, entityid):
     entity_info = information[connection_uuid]["entity_info"]
     information[connection_uuid]["need_entityid"] = entityid
     if entity_info == '':
-        entity_info = {"stautus": "正在查询实体信息，下次调用可获取"}
+        entity_info = {"stautus": "正在查询实体信息，再次询问可获取"}
     return json.dumps(entity_info)
 
 

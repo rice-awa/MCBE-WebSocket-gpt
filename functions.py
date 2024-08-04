@@ -65,7 +65,7 @@ functions = [
     },
     {
         "name": "gpt_world_entity",  # 函数名称
-        "description": "此函数能够将实体加入获取队列，能获取队列中实体的id，坐标等信息，实体id参数不需要前缀，如果return为空，需要重新调用该函数刷新",  # 函数描述
+        "description": "此函数能够将实体加入获取队列，能获取队列中实体的id，坐标等信息，实体id参数不需要前缀，只能同时获取一个，如果return为查询中，需要告诉玩家再次发起聊天获取",  # 函数描述
         "parameters": {  # 函数参数
             "type": "object",
             "properties": {
