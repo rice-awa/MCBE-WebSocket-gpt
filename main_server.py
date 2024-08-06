@@ -4,6 +4,7 @@ import os
 import re
 import auth
 import uuid
+import base64
 import websockets
 from gptapi import GPTAPIConversation
 from functions import functions
@@ -17,7 +18,7 @@ if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
 model = "gpt-4o"  # gpt模型
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符"  # 系统提示词
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，交流中称玩家为“冒险家”，请始终保持积极和专业的态度。回答尽量保持一段话不要太长。"  # 系统提示词
 
 # 获取本地IP地址
 ip = "0.0.0.0"
@@ -38,6 +39,8 @@ EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 # 使用uuid映射的方式来存储信息
 information = {}
 connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
+received_parts = {}
+complete_data = ""
 
 async def get_game_information(websocket, connection_uuid):
     global information
@@ -277,7 +280,7 @@ async def handle_event_message(websocket, data):
             information[connection_uuid]["PlayerTransform_messages"] = {}
         
         # 检查是否已经存在该玩家的信息，如果存在则更新
-        if player_name in information[connection_uuid]["PlayerTransform_messages"]:
+        if player_name in information[connection_uuid]["PlayerTransform_messages"] and player_name != "工具人":
             existing_message = information[connection_uuid]["PlayerTransform_messages"][player_name]
             if existing_message["player_id"] == player_id:
                 # 更新现有玩家信息
@@ -370,16 +373,18 @@ async def handle_player_message(websocket, data, conversation):
             await send_game_message(websocket, "请先登录")
 
         if sender == "工具人":
+            #print(f"工具人说: {message}")
             if message.startswith("entity_position:"):
                 content = message.split(":", 1)[1].strip()
-                print(f"工具人说: {content}")
                 information[connection_uuid]["entity_info"] = content
+            elif message.startswith("inventorypart"):
+                await handle_player_inventory(message.strip(), connection_uuid)
             
         if sender == "脚本引擎":
             if message.startswith("[脚本引擎]"):
                 content = message.split(" ", 1)[1].strip()
             print(f"脚本引擎说: {content}")
-            await handle_script(websocket, content)
+            #await handle_script(websocket, content)
 
 def parse_message(message):
     """解析消息，返回指令和实际内容"""
@@ -387,6 +392,46 @@ def parse_message(message):
         if message.startswith(cmd):
             return cmd, message[len(cmd):].strip()
     return "", message
+
+async def handle_player_inventory(message, connection_uuid):
+    global received_parts, complete_data
+
+    print(f"工具人说: {message}")
+    match = re.match(r'^inventorypart(\d+)-(\d+):(.*)$', message)
+
+    if match:
+        part_index = int(match.group(1))
+        total_parts = int(match.group(2))
+        data_chunk = match.group(3)
+
+        received_parts[part_index] = data_chunk
+        print(f"接收到的片段 {part_index}/{total_parts}: {data_chunk}")
+
+        # 检查是否所有部分都已接收
+        all_parts_received = True
+        total_parts = len(received_parts)
+        for i in range(1, total_parts + 1):
+            if i not in received_parts:
+                all_parts_received = False
+                break
+
+        if all_parts_received:
+            # 组合所有部分
+            for i in range(1, total_parts + 1):
+                complete_data += received_parts[i]
+
+            try:
+                inventory_dict = json.loads(complete_data)
+                print("完整的背包数据：", inventory_dict)
+                information[connection_uuid]["player_inventory"] = inventory_dict
+            except json.JSONDecodeError as error:
+                print("解析数据时出错：", error)
+
+            # 清空数据以便下次使用
+            received_parts = {}
+            complete_data = ""
+
+
 
 async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
@@ -449,8 +494,8 @@ async def handle_event(websocket, data, conversation):
     #     pass
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
-    print(data)
-    print()
+    # print(data)
+    # print()
     if message_purpose == "event":
         await handle_event_message(websocket, data)
 
@@ -470,6 +515,7 @@ async def handle_connection(websocket, path):
         "game_time": '',
         "game_day":'',
         "players": '',
+        "player_inventory": '',
         "need_entityid": '',
         "entity_info" : ''
     }
