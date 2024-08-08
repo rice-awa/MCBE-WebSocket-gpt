@@ -1,25 +1,34 @@
-# MCBE Websocket Server In-game GPT Usage
+# MCBE WebSocket Server: Using GPT in Minecraft
+
+## This Page is for the Function-Call Version
 
 [简体中文](./README.md)
 
-This project provides a Python-based WebSocket service for Minecraft Bedrock Edition (**_MCBE_**) servers. It can capture players' **chat messages**, call the GPT API to enable **chatGPT** usage in-game, and ultimately send the GPT responses back to the game. The project uses asynchronous programming with aiohttp and Websockets.
+This project provides a Python-based WebSocket service for the Minecraft Bedrock Edition (**_MCBE_**) server. It can capture players' **chat messages** and call the GPT API to use **chatGPT** within the game, ultimately sending GPT replies back to the game. The project uses asynchronous aiohttp and Websockets.
 
 ---
 
 ## Updates
 
+**2024/8/2** (New)
+
+- 1. Added function-call feature (see the function-call branch)
+- 2. Looping to fetch game data may cause server lag
+- 3. The function-call feature requires server-side support, currently only supported on the server side; local testing (main_local) is ineffective
+- 4. Function-call does not support closing context automatically; please save and close manually (disconnecting will also close)
+
 **2024/7/31** (New)
 
-- 1.Added authentication feature
-- 2.Added process monitoring functionality
+- 1. Added authentication feature
+- 2. Added process daemon feature
 
 **2024/7/6**
 
-- 1.Changed API calls to non-streaming transmission
-- 2.Simplified code logic in `gptapi.py`
-- 3.Replaced expired third-party API key
+- 1. Changed API calls to non-streaming
+- 2. Simplified the code logic in `gptapi.py`
+- 3. Replaced expired third-party API key
 
-**Table of Contents**
+**Contents**
 
 - [Features](#features)
 - [Quick Start](#quick-start)
@@ -27,7 +36,7 @@ This project provides a Python-based WebSocket service for Minecraft Bedrock Edi
 - [Usage Instructions](#usage-instructions)
 - [Notes](#notes)
 - [How to Contribute](#how-to-contribute)
-- [License Information](#license-information)
+- [License](#license)
 - [Feedback](#feedback)
 - [To-Do List](#to-do-list)
 
@@ -35,19 +44,19 @@ This project provides a Python-based WebSocket service for Minecraft Bedrock Edi
 
 ## Features
 
-- **Capture Player Messages**: Real-time acquisition of players' chat messages in the game.
-- **GPT Response Generation**: Generate reply content through the GPT API.
-- **Game Display**: Send GPT-generated responses directly to MCBE.
+- **Capture Player Messages**: Real-time capture of players' chat messages in the game.
+- **GPT Reply Generation**: Generate reply content using the GPT API.
+- **In-Game Display**: Send GPT-generated replies directly to MCBE.
 - **Context Support**: Enable conversation history by setting `enable_history` to `True`.
-- **Multiple Connection Support**: Each connection is an instance, allowing multiple instances to connect simultaneously. Note: Only supported for servers (main_server), not effective for local testing (main_local).
-- **Authentication**: Supports login verification to prevent API abuse.
-- **Process Monitoring**: Implements process monitoring and automatic restart using daemon.py.
+- **Multiple Connections**: Each connection is an instance, allowing multiple instances to connect simultaneously. Note: Only supported on the server (main_server); local testing (main_local) is ineffective.
+- **Authentication**: Support for login authentication to prevent API misuse.
+- **Process Daemon**: Use daemon.py for process monitoring and automatic restart.
 
 ---
 
 ## Quick Start
 
-Ensure that your environment has Python 3.8+ installed.
+Ensure your environment has Python 3.8+ installed.
 
 1. **Clone the project**:
 
@@ -62,22 +71,28 @@ Ensure that your environment has Python 3.8+ installed.
    pip install -r requirements.txt
    ```
 
-3. **\*Configure environment variables**
-   Please refer to the [Configuration Guide](#configuration-guide).
+3. **Configure environment variables**:
+
+   Refer to the [Configuration Guide](#configuration-guide).
 
 4. **Run the WebSocket server**:
-   - Local testing
-     Modify `api_url` and `api_key` in `main_local.py`, then run:
+
+   - Local testing:
+     Modify `main_local.py` to set `api_url` and `api_key`, then run:
+
      ```bash
      python main_local.py
      ```
-   - Server operation (**If using Linux, process monitoring (daemon.py) is included**)
+
+   - Server operation (**If using Linux, includes process daemon (daemon.py)**):
      Use the provided script to set up the service:
+
      ```bash
      chmod +x setup_service.sh
      sudo ./setup_service.sh <API_URL> <API_KEY>
      ```
-     This will set up a system service that starts automatically and can be used even after server restarts.
+
+     This will set up a system service that automatically starts and can be used after server reboots.
 
 ---
 
@@ -86,14 +101,14 @@ Ensure that your environment has Python 3.8+ installed.
 - **API Settings**:
 
   - Local testing: Set `api_url` and `api_key` in `main_local.py`.
-  - Server: Use the `setup_service.sh` script to set environment variables.
-  - It's recommended to use a third-party forwarded key. We recommend using this [apikey](https://burn.hair/). Of course, official APIKEYs also work.
+  - Server: Use `setup_service.sh` script to set environment variables `API_URL` and `API_KEY`. Note: Remove the backticks and replace the values accordingly.
+  - It is recommended to use a third-party key forwarding service, such as this [apikey](https://burn.hair/). Official API keys are also supported.
 
 - **Authentication**:
   Set environment variables `WEBSOCKET_PASSWORD` and `SECRET_KEY`. The default password is "123456".
 
 - **Server Settings**:
-  Modify the `ip` and `port` parameters. Servers need to keep `ip` as "0.0.0.0".
+  Modify the `ip` and `port` parameters. The server should keep `ip` as "0.0.0.0".
 
 ---
 
@@ -103,32 +118,36 @@ Ensure that your environment has Python 3.8+ installed.
    Follow the instructions in the Quick Start section to run the server.
 
 2. **Connect to the server**:
-   In the Minecraft chat box, enter `/wsserver <server ip>:<server port>`.
+   Enter `/wsserver <server_ip>:<server_port>` in the Minecraft chat box.
    ![wsserver](https://s11.ax1x.com/2024/02/13/pF8y0dU.png)
 
-3. **Log in**:
-   Use `#登录 <password>` for authentication.
-   ![Login verification](https://s3.bmp.ovh/imgs/2024/07/31/82bdff9f34ad14d6.png)
+3. **Login**:
+   Use `#login <password>` to authenticate (default is 123456).
+   ![Login Authentication](https://s3.bmp.ovh/imgs/2024/07/31/82bdff9f34ad14d6.png)
 
 4. **Use chat commands**:
-   Chat input `GPT 聊天 {content}` to converse with GPT. Note that each parameter needs to be separated by a space.
-   ![GPT chat](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
-   GPT replies are in green text.
+   Enter `GPT chat {content}` to converse with GPT. Note that each parameter should be separated by spaces.
 
-   - `GPT 上下文 <status/enable/disable>`: Manage context
-   - `GPT 脚本 <content>`: Use script events to send data
-   - `运行命令 <command>`: Execute game commands
+   ![GPT Chat](https://s11.ax1x.com/2024/02/13/pF8yRL6.png)
+
+   GPT replies will be displayed in green text.
+
+   - `GPT context <status/enable/disable>`: Manage context
+   - `GPT script <content>`: Send data using script events
+   - `run command <command>`: Execute game commands
 
 5. **Save conversations**:
-   - Enter `GPT 保存` to save the conversation. Note that there should be no space after "保存"
-   - After saving and closing the session, conversation records and logs will be generated in the root directory.
-     ![Conversation log](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
+
+   - Enter `GPT save` to save the conversation.
+   - After saving and closing the session, conversation logs and records will be generated in the root directory.
+
+   ![Conversation Logs](https://s11.ax1x.com/2024/02/13/pF8yXef.png)
 
 ---
 
 ## Notes
 
-- Protect API keys and authentication information.
+- Protect your API key and authentication information.
 - Use the API legally and comply with relevant terms and game rules.
 - This project is for learning and research purposes only.
 
@@ -152,7 +171,7 @@ Ensure that your environment has Python 3.8+ installed.
 
 ## Feedback
 
-Got questions? [Contact me](https://space.bilibili.com/521856101).
+Have questions? [Contact me](https://space.bilibili.com/521856101).
 
 ---
 
@@ -160,10 +179,10 @@ Got questions? [Contact me](https://space.bilibili.com/521856101).
 
 - [x] Provide detailed installation and configuration tutorials
 - [x] Add authentication feature
-- [x] Implement process monitoring
+- [x] Implement process daemon
 - [ ] Add more in-game interaction features
-- [ ] Optimize secure storage method for API keys
+- [ ] Optimize API key security storage methods
 
 ---
 
-**Thanks for using!**
+**Thank you for using!**
