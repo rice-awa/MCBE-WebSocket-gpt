@@ -18,7 +18,7 @@ if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
 model = "gpt-4o"  # gpt模型
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，交流中称玩家为“冒险家”，请始终保持积极和专业的态度。回答尽量保持一段话不要太长。"  # 系统提示词
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都把玩家“工具人”忽略（除非特殊需要）#3.请始终保持积极和专业的态度。#4.回答尽量保持一段话不要太长。"  # 系统提示词
 
 # 获取本地IP地址
 ip = "0.0.0.0"
@@ -33,6 +33,14 @@ GPT模型:{model}
 连接UUID:{uuid}
 -----------
 """
+class ServerState:
+    def __init__(self):
+        self.information = {}
+        self.connections = {}
+        self.received_parts = {}
+        self.complete_data = ""
+
+server_state = ServerState()
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令"]
 EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
@@ -52,13 +60,36 @@ async def get_game_information(websocket, connection_uuid):
     await asyncio.sleep(0.5)
     entityid = information[connection_uuid]["need_entityid"]
     await send_script_data(websocket, f"check_entity {entityid}", "server:script")
+    await asyncio.sleep(0.5)
+    await send_script_data(websocket, f"check_inventory", "server:script")
     print(f"已发送信息查询命令给 {connection_uuid}")
+
+async def clear_old_data(websocket, connection_uuid):
+    global information
+    information[connection_uuid]["entity_info"] = ''
+    information[connection_uuid]["need_entityid"] = ''
 
 async def periodic_update():
     while True:
         for connection_uuid, websocket in connections.items():
+            await clear_old_data(websocket, connection_uuid)
             await get_game_information(websocket, connection_uuid)
+            
         await asyncio.sleep(10)
+
+async def gpt_player_inventory(websocket, player_name=None):
+    global information
+    connection_uuid = websocket.uuid
+    try:
+        if not player_name:
+            inventory = information[connection_uuid]["player_inventory"]
+        else:
+            inventory = information[connection_uuid]["player_inventory"][player_name]
+        print(f"收到玩家背包信息: {inventory}")
+        return json.dumps(inventory)
+    except Exception as e:
+        print(f"获取玩家背包时出错: {e}")
+        return json.dumps({"error": "无法获取背包信息"})
 
 async def gpt_world_entity(websocket, entityid):
     global information
@@ -129,7 +160,8 @@ functions_map = {
     "gpt_game_players": gpt_game_players,
     "gpt_get_time": gpt_get_time,
     "gpt_run_command": gpt_run_command,
-    "gpt_world_entity": gpt_world_entity
+    "gpt_world_entity": gpt_world_entity,
+    "gpt_player_inventory": gpt_player_inventory
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -409,7 +441,6 @@ async def handle_player_inventory(message, connection_uuid):
 
         # 检查是否所有部分都已接收
         all_parts_received = True
-        total_parts = len(received_parts)
         for i in range(1, total_parts + 1):
             if i not in received_parts:
                 all_parts_received = False

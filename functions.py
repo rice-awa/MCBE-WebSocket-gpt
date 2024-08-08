@@ -77,5 +77,18 @@ functions = [
             "required": ["entityid"]  # 必需参数
         }
     },
+    {
+        "name": "gpt_player_inventory",  # 函数名称
+        "description": "此函数能够获取玩家的背包信息(背包物品索引从0开始，只有有物品的格子才有数据，格子数量为索引值+1)，默认不需要指定玩家，返回json格式，回答时不要特殊格式",  # 函数描述
+        "parameters": {  # 函数参数
+            "type": "object",
+            "properties": {
+                "player_name": {
+                    "type": "string",  # 参数类型
+                    "description": "指定查询的玩家,例如：'player1'"  # 参数描述
+                }
+            }
+        }
+    },
 ]
 
