@@ -1,3 +1,4 @@
+
 import asyncio
 import json
 import os
@@ -6,23 +7,56 @@ import auth
 import uuid
 import base64
 import websockets
+from dataclasses import dataclass, field
+from typing import Dict, Any
+from collections import defaultdict
 from gptapi import GPTAPIConversation
 from functions import functions
 
-api_url = os.getenv("API_URL")  # API地址
-api_key = os.getenv("API_KEY")  # API密钥
+@dataclass
+class PlayerInfo:
+    name: str
+    id: str
+    color: str
+    type: str
+    variant: str
+    yRot: float
+    dimension: str
+    position: Dict[str, float]
+
+@dataclass
+class GameInformation:
+    game_weather: str = ''
+    game_time: str = ''
+    game_day: str = ''
+    players: str = ''
+    player_inventory: Dict[str, Any] = field(default_factory=dict)
+    need_entityid: str = ''
+    entity_info: str = ''
+    player_transform_messages: Dict[str, PlayerInfo] = field(default_factory=dict)
+
+@dataclass
+class ServerState:
+    connections: Dict[str, websockets.WebSocketServerProtocol] = field(default_factory=dict)
+    information: Dict[str, GameInformation] = field(default_factory=dict)
+    received_parts: Dict[str, Dict[str, Dict[int, str]]] = field(default_factory=lambda: defaultdict(lambda: defaultdict(dict)))
+    complete_data: str = ''
+
+server_state = ServerState()
+
+api_url = os.getenv("API_URL")
+api_key = os.getenv("API_KEY")
 
 if not api_url:
     raise ValueError("API_URL 环境变量未设置")
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "gpt-4o"  # gpt模型
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都把玩家“工具人”忽略（除非特殊需要）#3.请始终保持积极和专业的态度。#4.回答尽量保持一段话不要太长。"  # 系统提示词
+model = "gpt-4o"
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都必须把玩家“工具人”忽略（除非特殊需要）#3.请始终保持积极和专业的态度。#4.回答尽量保持一段话不要太长。"
 
-# 获取本地IP地址
 ip = "0.0.0.0"
-port = "8080"  # 端口
+port = "8080"
 
 welcome_message_template = """-----------
 成功连接WebSocket服务器
@@ -33,58 +67,41 @@ GPT模型:{model}
 连接UUID:{uuid}
 -----------
 """
-class ServerState:
-    def __init__(self):
-        self.information = {}
-        self.connections = {}
-        self.received_parts = {}
-        self.complete_data = ""
-
-server_state = ServerState()
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令"]
 EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
-# 使用uuid映射的方式来存储信息
-information = {}
-connections = {}  # 新增，用于存储所有活动的 WebSocket 连接
-received_parts = {}
-complete_data = ""
 
 async def get_game_information(websocket, connection_uuid):
-    global information
     await run_command(websocket, "weather query")
     await run_command(websocket, "list")
     await asyncio.sleep(0.5)
     await run_command(websocket, "time query day")
     await run_command(websocket, "time query gametime")
     await asyncio.sleep(0.5)
-    entityid = information[connection_uuid]["need_entityid"]
+    entityid = server_state.information[connection_uuid].need_entityid
     await send_script_data(websocket, f"check_entity {entityid}", "server:script")
     await asyncio.sleep(0.5)
     await send_script_data(websocket, f"check_inventory", "server:script")
     print(f"已发送信息查询命令给 {connection_uuid}")
 
 async def clear_old_data(websocket, connection_uuid):
-    global information
-    information[connection_uuid]["entity_info"] = ''
-    information[connection_uuid]["need_entityid"] = ''
+    server_state.information[connection_uuid].entity_info = ''
+    server_state.information[connection_uuid].need_entityid = ''
 
 async def periodic_update():
     while True:
-        for connection_uuid, websocket in connections.items():
+        for connection_uuid, websocket in server_state.connections.items():
             await clear_old_data(websocket, connection_uuid)
             await get_game_information(websocket, connection_uuid)
-            
         await asyncio.sleep(10)
 
 async def gpt_player_inventory(websocket, player_name=None):
-    global information
     connection_uuid = websocket.uuid
     try:
         if not player_name:
-            inventory = information[connection_uuid]["player_inventory"]
+            inventory = server_state.information[connection_uuid].player_inventory
         else:
-            inventory = information[connection_uuid]["player_inventory"][player_name]
+            inventory = server_state.information[connection_uuid].player_inventory.get(player_name, {})
         print(f"收到玩家背包信息: {inventory}")
         return json.dumps(inventory)
     except Exception as e:
@@ -92,14 +109,12 @@ async def gpt_player_inventory(websocket, player_name=None):
         return json.dumps({"error": "无法获取背包信息"})
 
 async def gpt_world_entity(websocket, entityid):
-    global information
     connection_uuid = websocket.uuid
-    entity_info = information[connection_uuid]["entity_info"]
-    information[connection_uuid]["need_entityid"] = entityid
+    entity_info = server_state.information[connection_uuid].entity_info
+    server_state.information[connection_uuid].need_entityid = entityid
     if entity_info == '':
-        entity_info = {"stautus": "正在查询实体信息，再次询问可获取"}
+        entity_info = {"status": "正在查询实体信息，再次询问可获取"}
     return json.dumps(entity_info)
-
 
 async def gpt_run_command(websocket, command):
     print(f"已发送命令: {command}")
@@ -107,10 +122,9 @@ async def gpt_run_command(websocket, command):
     return f"已发送命令: {command}，命令稍后执行"
 
 async def gpt_get_time(websocket, dimension):
-    global information
     connection_uuid = websocket.uuid
-    gametime = information[connection_uuid]["game_time"]
-    gameday = information[connection_uuid]["game_day"]
+    gametime = server_state.information[connection_uuid].game_time
+    gameday = server_state.information[connection_uuid].game_day
 
     json_data = {
         "dimension": dimension,
@@ -120,10 +134,8 @@ async def gpt_get_time(websocket, dimension):
     return json.dumps(json_data)
 
 async def gpt_game_weather(websocket, dimension):
-    global information
     connection_uuid = websocket.uuid
-    dimension = dimension #information[connection_uuid]["PlayerTransform_messages"][player_name]["dimension"]
-    weather = information[connection_uuid]["game_weather"]
+    weather = server_state.information[connection_uuid].game_weather
     print(f"收到天气信息: {weather}")
     
     json_data = {
@@ -133,22 +145,21 @@ async def gpt_game_weather(websocket, dimension):
     return json.dumps(json_data)
 
 async def gpt_game_players(websocket):
-    global information
+    connection_uuid = websocket.uuid
+    players = server_state.information[connection_uuid].players
+    player_transform_messages = server_state.information[connection_uuid].player_transform_messages
+    all_players_info = [{"all_players": players}]
 
-    players = information.get(websocket.uuid, {})["players"]
-    playersinfo = information.get(websocket.uuid, {})["PlayerTransform_messages"]
-    all_players_info = [{"all_players":players}]
-
-    if not playersinfo:
+    if not player_transform_messages:
         return json.dumps({"error": "No player transform messages found."})
     
-    for player_name, player_info in playersinfo.items():
+    for player_name, player_info in player_transform_messages.items():
         if player_info:
             json_data = {
-                "player_name": player_info["player_name"],
-                "player_yRot": player_info["player_yRot"],
-                "player_dimension": player_info["dimension"],
-                "position": player_info["position"],
+                "player_name": player_info.name,
+                "player_yRot": player_info.yRot,
+                "player_dimension": player_info.dimension,
+                "position": player_info.position,
             }
             all_players_info.append(json_data)
     
@@ -165,7 +176,6 @@ functions_map = {
 }
 
 async def gpt_main(conversation, player_prompt):
-    # 发送提示到GPT并获取回复
     gpt_message = await conversation.call_gpt(player_prompt)
 
     if gpt_message is None:
@@ -176,11 +186,9 @@ async def gpt_main(conversation, player_prompt):
     return gpt_message
 
 async def send_data(websocket, message):
-    """向客户端发送数据"""
     await websocket.send(json.dumps(message))
 
 async def subscribe_events(websocket):
-    """订阅事件"""
     for event_name in EVENT_LISTS:
         message = {
             "body": {
@@ -196,19 +204,18 @@ async def subscribe_events(websocket):
         await send_data(websocket, message)
 
 async def send_game_message(websocket, message):
-    """向游戏内发送聊天信息"""
-    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%')  # 转义特殊字符，避免报错
+    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%')
     print(say_message)
     game_message = {
         "body": {
             "origin": {
                 "type": "say"
             },
-            "commandLine": f'tellraw @a {{"rawtext":[{{"text":"§a{say_message}"}}]}}',  #
+            "commandLine": f'tellraw @a {{"rawtext":[{{"text":"§a{say_message}"}}]}}',
             "version": 1
         },
         "header": {
-            "requestId": str(uuid.uuid4()),  # uuid
+            "requestId": str(uuid.uuid4()),
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -217,7 +224,6 @@ async def send_game_message(websocket, message):
     await send_data(websocket, game_message)
 
 async def run_command(websocket, command):
-    """运行命令"""
     print(f"命令{command}开始发送")
     message = {
         "body": {
@@ -228,7 +234,7 @@ async def run_command(websocket, command):
             "version": 17039360
         },
         "header": {
-            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",  # uuidstr(uuid.uuid4())
+            "requestId": "9b84bcb2-5390-11ea-9e87-0221860e9b7e",
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -237,7 +243,6 @@ async def run_command(websocket, command):
     await send_data(websocket, message)
 
 async def send_script_data(websocket, content, messageid="server:data"):
-    """使用脚本事件命令给游戏发送数据"""
     message = {
         "body": {
             "origin": {
@@ -247,7 +252,7 @@ async def send_script_data(websocket, content, messageid="server:data"):
             "version": 17039360
         },
         "header": {
-            "requestId": str(uuid.uuid4()),  # uuid
+            "requestId": str(uuid.uuid4()),
             "messagePurpose": "commandRequest",
             "version": 1,
             "EventName": "commandRequest"
@@ -256,9 +261,6 @@ async def send_script_data(websocket, content, messageid="server:data"):
     await send_data(websocket, message)
 
 async def handle_event_message(websocket, data):
-    """处理事件消息事件"""
-    global information
-
     body = data.get('body', {})
     header = data.get('header', {})
     event_name = header.get('eventName', '')
@@ -274,7 +276,6 @@ async def handle_event_message(websocket, data):
         player_variant = player.get('variant', 'Unknown')
         player_yRot = player.get('yRot', 'Unknown')
 
-        # 将 dimension 的数字 ID 转换为对应的字符串值
         dimension_map = {
             0: 'overworld',
             1: 'nether',
@@ -282,51 +283,31 @@ async def handle_event_message(websocket, data):
         }
         dimension = dimension_map.get(dimension_id, 'Unknown')
 
-        # 获取位置坐标
         x = player_pos.get('x', 'Unknown')
         y = player_pos.get('y', 'Unknown')
         z = player_pos.get('z', 'Unknown')
 
-        # 构建JSON对象
-        player_transform_message = {
-            "player_name": player_name,
-            "player_id": player_id,
-            "player_color": player_color,
-            "player_type": player_type,
-            "player_variant": player_variant,
-            "player_yRot": player_yRot,
-            "dimension": dimension,
-            "position": {
-                "x": x,
-                "y": y,
-                "z": z
-            }
-        }
+        player_info = PlayerInfo(
+            name=player_name,
+            id=player_id,
+            color=player_color,
+            type=player_type,
+            variant=player_variant,
+            yRot=player_yRot,
+            dimension=dimension,
+            position={"x": x, "y": y, "z": z}
+        )
 
-        # 存储在information中
         connection_uuid = websocket.uuid
-        if connection_uuid not in information:
-            information[connection_uuid] = {}
-
-        if "PlayerTransform_messages" not in information[connection_uuid]:
-            information[connection_uuid]["PlayerTransform_messages"] = {}
+        if connection_uuid not in server_state.information:
+            server_state.information[connection_uuid] = GameInformation()
         
-        # 检查是否已经存在该玩家的信息，如果存在则更新
-        if player_name in information[connection_uuid]["PlayerTransform_messages"] and player_name != "工具人":
-            existing_message = information[connection_uuid]["PlayerTransform_messages"][player_name]
-            if existing_message["player_id"] == player_id:
-                # 更新现有玩家信息
-                information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
-        else:
-            # 添加新的玩家信息
-            information[connection_uuid]["PlayerTransform_messages"][player_name] = player_transform_message
+        if player_name != "工具人":
+            server_state.information[connection_uuid].player_transform_messages[player_name] = player_info
 
-        print(f"存储在字典的信息： {information[connection_uuid]}")
-        #print(f"PlayerTransform_messages: {information[connection_uuid]['PlayerTransform_messages']}")
+        print(f"存储在字典的信息： {server_state.information[connection_uuid]}")
 
 async def handle_command_response(websocket, data):
-    global information
-    
     print("命令响应处理开始")
     body = data.get('body', {})
     if 'statusMessage' in body:
@@ -340,36 +321,30 @@ async def handle_command_response(websocket, data):
 
         if message_part[0] == '天气状态是':
             weather = message_part[1].strip()
-            if connection_uuid in information:
-                information[connection_uuid]["game_weather"] = weather
+            server_state.information[connection_uuid].game_weather = weather
             print(f"当前天气: {weather}")
         elif message_part[0][9:13] == '玩家在线':
             players = message_part[1].strip()
-            if connection_uuid in information:
-                information[connection_uuid]["players"] = players
+            server_state.information[connection_uuid].players = players
         elif message_part_space[0] == '游戏时间为':
             gametime = message_part_space[1].strip()
-            if connection_uuid in information:
-                information[connection_uuid]["game_time"] = gametime
+            server_state.information[connection_uuid].game_time = gametime
         elif message_part_space[0] == '日期为':
             gameday = message_part_space[1].strip()
-            if connection_uuid in information:
-                information[connection_uuid]["game_day"] = gameday
+            server_state.information[connection_uuid].game_day = gameday
         else:
             print("未识别的命令响应")
 
 async def handle_player_message(websocket, data, conversation):
-    global connection_uuid
-    """处理玩家消息事件"""
     sender = data['body']['sender']
     message = data['body']['message']
 
     if sender and message:
-
         print(f"玩家 {sender} 说: {message}")
 
         command, content = parse_message(message)
 
+        connection_uuid = websocket.uuid
         if command == "#登录":
             if auth.verify_password(content):
                 if auth.is_token_valid(connection_uuid):
@@ -397,92 +372,82 @@ async def handle_player_message(websocket, data, conversation):
             elif command == "运行命令":
                 await handle_run_command(websocket, content)
             elif command == "测试天气":
-                await send_game_message(websocket, f"测试结果: {information[connection_uuid]['game_weather']}")
+                await send_game_message(websocket, f"测试结果: {server_state.information[connection_uuid].game_weather}")
             elif command == "脚本命令":
                 await handle_script_run_command(websocket, content)
-
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
 
         if sender == "工具人":
-            #print(f"工具人说: {message}")
             if message.startswith("entity_position:"):
                 content = message.split(":", 1)[1].strip()
-                information[connection_uuid]["entity_info"] = content
+                server_state.information[connection_uuid].entity_info = content
             elif message.startswith("inventorypart"):
-                await handle_player_inventory(message.strip(), connection_uuid)
+                await handle_data_part(message, connection_uuid, 'inventory')
             
         if sender == "脚本引擎":
             if message.startswith("[脚本引擎]"):
                 content = message.split(" ", 1)[1].strip()
             print(f"脚本引擎说: {content}")
-            #await handle_script(websocket, content)
 
 def parse_message(message):
-    """解析消息，返回指令和实际内容"""
     for cmd in COMMANDS:
         if message.startswith(cmd):
             return cmd, message[len(cmd):].strip()
     return "", message
 
-async def handle_player_inventory(message, connection_uuid):
-    global received_parts, complete_data
-
+async def handle_data_part(message, connection_uuid, data_type):
     print(f"工具人说: {message}")
-    match = re.match(r'^inventorypart(\d+)-(\d+):(.*)$', message)
+    match = re.match(rf'^{data_type}part(\d+)-(\d+):(.*)', message)
 
     if match:
         part_index = int(match.group(1))
         total_parts = int(match.group(2))
         data_chunk = match.group(3)
 
-        received_parts[part_index] = data_chunk
+        if connection_uuid not in server_state.received_parts:
+            server_state.received_parts[connection_uuid] = defaultdict(dict)
+
+        server_state.received_parts[connection_uuid][data_type][part_index] = data_chunk
         print(f"接收到的片段 {part_index}/{total_parts}: {data_chunk}")
 
         # 检查是否所有部分都已接收
-        all_parts_received = True
-        for i in range(1, total_parts + 1):
-            if i not in received_parts:
-                all_parts_received = False
-                break
+        all_parts_received = len(server_state.received_parts[connection_uuid][data_type]) == total_parts
 
         if all_parts_received:
             # 组合所有部分
-            for i in range(1, total_parts + 1):
-                complete_data += received_parts[i]
+            complete_data = ''.join(server_state.received_parts[connection_uuid][data_type][i] for i in range(1, total_parts + 1))
 
             try:
-                inventory_dict = json.loads(complete_data)
-                print("完整的背包数据：", inventory_dict)
-                information[connection_uuid]["player_inventory"] = inventory_dict
+                data_dict = json.loads(complete_data)
+                print(f"完整的{data_type}数据：", data_dict)
+                if data_type == 'inventory':
+                    server_state.information[connection_uuid].player_inventory = data_dict
+                elif data_type == 'stats':
+                    server_state.information[connection_uuid].player_stats = data_dict
+                # 处理其他类型的数据
             except json.JSONDecodeError as error:
                 print("解析数据时出错：", error)
 
             # 清空数据以便下次使用
-            received_parts = {}
-            complete_data = ""
-
-
+            server_state.received_parts[connection_uuid][data_type].clear()
 
 async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    gpt_message = await gpt_main(conversation, prompt)
     
-    # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
     sentences = re.split(r'(?<=[。])', gpt_message)
     
     for sentence in sentences:
-        if sentence.strip():  # 跳过空句子
+        if sentence.strip():
             await send_game_message(websocket, sentence)
-            #await send_script_data(websocket, sentence)  # 使用脚本处理数据
-            # await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
 async def handle_gpt_script(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    gpt_message = await gpt_main(conversation, prompt)
     
-    await send_script_data(websocket, gpt_message)  # 使用脚本处理数据
-    await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+    await send_script_data(websocket, gpt_message)
+    await asyncio.sleep(0.1)
 
 async def handle_gpt_save(websocket, conversation):
     if not conversation:
@@ -502,81 +467,68 @@ async def handle_script_run_command(websocket, content):
     await send_script_data(websocket, command, "server:run_command")
 
 async def handle_script(websocket, message):
-    global information
-    # 使用 json.dumps 确保字符串正确转义
     connection_uuid = websocket.uuid
     sanitized_message = json.dumps(message)
     print(f"handle_script输出: {sanitized_message}")
     await send_game_message(websocket, sanitized_message)
-    # if sanitized_message.startswith("entity_position: "):
-    #     information[connection_uuid]["entity_info"] = sanitized_message
-    #await send_script_data(websocket, sanitized_message, "server:script")
 
 async def handle_event(websocket, data, conversation):
-    """根据事件类型处理事件"""
     header = data.get('header', {})
     event_name = header.get('eventName')
     message_purpose = header.get('messagePurpose')
 
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data, conversation)
-    # 屏蔽玩家操作事件，避免刷屏打印数据
-    # if event_name == "PlayerTransform":
-    #     pass
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
-    # print(data)
-    # print()
     if message_purpose == "event":
         await handle_event_message(websocket, data)
 
 async def handle_connection(websocket, path):
-    global connection_uuid
     connection_uuid = str(uuid.uuid4())
     websocket.uuid = connection_uuid
-    print(f"客户端:{connection_uuid}已连接")
+    print(f"客户端: {connection_uuid} 已连接")
+
     conversation = GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket, system_prompt=system_prompt, enable_logging=True)
+
     welcome_message = welcome_message_template.format(
-        ip=ip, port=port, model=model, uuid=connection_uuid
+        ip=ip, 
+        port=port, 
+        model=model, 
+        uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
-    # 初始化uuid对应的信息
-    information[connection_uuid] = {
-        "game_weather": '',
-        "game_time": '',
-        "game_day":'',
-        "players": '',
-        "player_inventory": '',
-        "need_entityid": '',
-        "entity_info" : ''
-    }
-    
-    # 将连接添加到 connections 字典
-    connections[connection_uuid] = websocket
+
+    server_state.information[connection_uuid] = GameInformation()
+    server_state.connections[connection_uuid] = websocket
     
     try:
         await send_data(websocket, {"Result": "true"})
         await subscribe_events(websocket)
+
         async for message in websocket:
             data = json.loads(message)
             await handle_event(websocket, data, conversation)
+    
     except websockets.exceptions.ConnectionClosed:
-        print("连接已断开")
+        print(f"客户端 {connection_uuid} 连接已断开")
+    
     except Exception as e:
         print(f"发生错误: {e}")
+    
     finally:
-        print(f"客户端{connection_uuid}已断开连接")
+        print(f"客户端 {connection_uuid} 已断开连接，正在清理资源")
         await conversation.close()
-        # 从 connections 和 information 字典中删除连接
-        del connections[connection_uuid]
-        del information[connection_uuid]
+
+        del server_state.connections[connection_uuid]
+        del server_state.information[connection_uuid]
 
 async def main():
     async with websockets.serve(handle_connection, ip, port):
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
         await asyncio.gather(
-            asyncio.Future(),  # 保持服务器运行
-            periodic_update()  # 启动定期更新任务
+            asyncio.Future(),
+            periodic_update()
         )
 
 if __name__ == "__main__":
