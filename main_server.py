@@ -12,7 +12,7 @@ from gptapi import GPTAPIConversation
 from functions import functions
 
 @dataclass
-class PlayerInfo:
+class PlayertransformInfo:
     name: str
     id: str
     color: str
@@ -28,10 +28,11 @@ class GameInformation:
     game_time: str = ''
     game_day: str = ''
     players: str = ''
-    player_inventory: Dict[str, Any] = field(default_factory=dict)
+    player_inventory: Dict[str, Any] = field(default_factory=dict) # 玩家背包信息
     need_entityid: str = ''
     entity_info: str = ''
-    player_transform_messages: Dict[str, PlayerInfo] = field(default_factory=dict)
+    player_info: Dict[str, Any] = field(default_factory=dict) # 玩家自身信息
+    player_transform_messages: Dict[str, PlayertransformInfo] = field(default_factory=dict)
     commandResponse_log: Dict[str, str] = field(default_factory=dict)
 
 @dataclass
@@ -81,7 +82,7 @@ async def get_game_information(websocket, connection_uuid):
     entityid = server_state.information[connection_uuid].need_entityid
     await send_script_data(websocket, f"check_entity {entityid}", "server:script")
     await asyncio.sleep(0.5)
-    await send_script_data(websocket, f"check_inventory", "server:script")
+    await send_script_data(websocket, f"player_info", "server:script")
     print(f"已发送信息查询命令给 {connection_uuid}")
 
 async def clear_old_data(websocket, connection_uuid):
@@ -161,6 +162,7 @@ async def gpt_game_weather(websocket, dimension):
 async def gpt_game_players(websocket):
     connection_uuid = websocket.uuid
     players = server_state.information[connection_uuid].players
+    player_self_info = server_state.information[connection_uuid].player_info
     player_transform_messages = server_state.information[connection_uuid].player_transform_messages
     all_players_info = [{"all_players": players}]
 
@@ -171,6 +173,8 @@ async def gpt_game_players(websocket):
         if player_info:
             json_data = {
                 "player_name": player_info.name,
+                "player_health" : player_self_info[player_name]["health"],
+                "player_tag": player_self_info[player_name]["tags"],
                 "player_yRot": player_info.yRot,
                 "player_dimension": player_info.dimension,
                 "position": player_info.position,
@@ -310,7 +314,7 @@ async def handle_event_message(websocket, data):
         y = player_pos.get('y', 'Unknown')
         z = player_pos.get('z', 'Unknown')
 
-        player_info = PlayerInfo(
+        player_info = PlayertransformInfo(
             name=player_name,
             id=player_id,
             color=player_color,
@@ -422,6 +426,8 @@ async def handle_player_message(websocket, data, conversation):
                 server_state.information[connection_uuid].entity_info = content
             elif message.startswith("inventorypart"):
                 await handle_data_part(message, connection_uuid, 'inventory')
+            elif message.startswith("playerinfopart"):
+                await handle_data_part(message, connection_uuid, 'playerinfo')
             
         if sender == "脚本引擎":
             if message.startswith("[脚本引擎]"):
@@ -442,7 +448,7 @@ async def handle_display_command_log(websocket):
         await send_game_message(websocket, "暂无命令日志")
     await send_game_message(websocket, f"{log_content}")
 
-async def handle_data_part(message, connection_uuid, data_type):
+async def handle_data_part(message, connection_uuid, data_type, other_message=None):
     print(f"工具人说: {message}")
     match = re.match(rf'^{data_type}part(\d+)-(\d+):(.*)', message)
 
@@ -469,8 +475,8 @@ async def handle_data_part(message, connection_uuid, data_type):
                 print(f"完整的{data_type}数据：", data_dict)
                 if data_type == 'inventory':
                     server_state.information[connection_uuid].player_inventory = data_dict
-                elif data_type == 'stats':
-                    server_state.information[connection_uuid].player_stats = data_dict
+                elif data_type == 'playerinfo':
+                    server_state.information[connection_uuid].player_info = data_dict
                 # 处理其他类型的数据
             except json.JSONDecodeError as error:
                 print("解析数据时出错：", error)
@@ -528,7 +534,6 @@ async def handle_event(websocket, data, conversation):
         await handle_player_message(websocket, data, conversation)
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
-        print(data)
     if message_purpose == "event":
         await handle_event_message(websocket, data)
 
