@@ -117,8 +117,9 @@ async def gpt_world_entity(websocket, entityid):
 
 async def gpt_run_command(websocket, commands):
     if not commands:
-        raise ValueError("至少需要一个命令")
-
+        print("没有命令可执行")
+        return "至少需要一个命令"
+    
     for command in commands:
         print(f"已发送命令: {command}")
         await run_command(websocket, command)
