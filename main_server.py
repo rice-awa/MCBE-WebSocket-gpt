@@ -1,4 +1,3 @@
-
 import asyncio
 import json
 import os
@@ -116,10 +115,15 @@ async def gpt_world_entity(websocket, entityid):
         entity_info = {"status": "正在查询实体信息，再次询问可获取"}
     return json.dumps(entity_info)
 
-async def gpt_run_command(websocket, command):
-    print(f"已发送命令: {command}")
-    await run_command(websocket, command)
-    return f"已发送命令: {command}，命令稍后执行"
+async def gpt_run_command(websocket, commands):
+    if not commands:
+        raise ValueError("至少需要一个命令")
+
+    for command in commands:
+        print(f"已发送命令: {command}")
+        await run_command(websocket, command)
+    
+    return f"已发送 {len(commands)} 个命令，命令稍后执行"
 
 async def gpt_get_time(websocket, dimension):
     connection_uuid = websocket.uuid
@@ -204,14 +208,16 @@ async def subscribe_events(websocket):
         await send_data(websocket, message)
 
 async def send_game_message(websocket, message):
-    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%')
-    print(say_message)
+    say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%') # .replace('[', '\\[').replace(']', '\\]').replace('{', '\\{').replace('}', '\\}')
+    say_message = "§a" + say_message
+    complete_message = json.dumps(say_message, ensure_ascii=False)
+    print(complete_message)
     game_message = {
         "body": {
             "origin": {
                 "type": "say"
             },
-            "commandLine": f'tellraw @a {{"rawtext":[{{"text":"§a{say_message}"}}]}}',
+            "commandLine": f'tellraw @a {{"rawtext":[{{"text":{complete_message}}}]}}',
             "version": 1
         },
         "header": {
