@@ -54,7 +54,7 @@ if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
 model = "gpt-4o"
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都必须把玩家“工具人”忽略（除非特殊需要）#3.请始终保持积极和专业的态度。#4.回答尽量保持一段话不要太长。"
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都必须把玩家“工具人”忽略（除非特殊需要）#3.当玩家的问题可能需要执行命令获取时，直接调用函数获取而不是叫玩家执行。#4.请始终保持积极和专业的态度。#5.回答尽量保持一段话不要太长。"
 
 ip = "0.0.0.0"
 port = "8080"
@@ -89,7 +89,6 @@ async def clear_old_data(websocket, connection_uuid):
     """定期清理 GameInformation 对象中的临时数据"""
     if connection_uuid in server_state.information:
         info = server_state.information[connection_uuid]
-        # 清理玩家变换信息
         # info.commandResponse_log.clear()
         # 清理天气、时间等临时信息
         info.game_weather = ''
@@ -103,6 +102,11 @@ async def periodic_update():
             await clear_old_data(websocket, connection_uuid)
             await get_game_information(websocket, connection_uuid)
         await asyncio.sleep(10)
+        
+async def gpt_get_commandlog(websocket):
+    connection_uuid = websocket.uuid
+    commandResponse_log = server_state.information[connection_uuid].commandResponse_log
+    return json.dumps(commandResponse_log)
 
 async def gpt_player_inventory(websocket, player_name=None):
     connection_uuid = websocket.uuid
@@ -190,7 +194,8 @@ functions_map = {
     "gpt_get_time": gpt_get_time,
     "gpt_run_command": gpt_run_command,
     "gpt_world_entity": gpt_world_entity,
-    "gpt_player_inventory": gpt_player_inventory
+    "gpt_player_inventory": gpt_player_inventory,
+    "gpt_get_commandlog": gpt_get_commandlog
 }
 
 async def gpt_main(conversation, player_prompt):
@@ -332,11 +337,10 @@ async def handle_event_message(websocket, data):
         if player_name != "工具人":
             server_state.information[connection_uuid].player_transform_messages[player_name] = player_info
 
-        print(f"存储在字典的信息： {server_state.information[connection_uuid]}")
+        #print(f"存储在字典的信息： {server_state.information[connection_uuid]}")
 
 async def handle_command_response(websocket, data):
     """处理命令响应"""
-    print("命令响应处理开始")
     body = data.get('body', {})
     header = data.get('header', {})
     requestid = header.get('requestId', '')
@@ -347,11 +351,7 @@ async def handle_command_response(websocket, data):
         
         connection_uuid = websocket.uuid
         
-        # 检查是否有对应的待响应命令
-        if requestid in server_state.pending_commands:
-            command = server_state.pending_commands.pop(requestid)
-            server_state.information[connection_uuid].commandResponse_log[command] = message
-            print(f"命令 '{command}' 的响应已记录")
+        
         
         message_part = message.split('：', 1)
         message_part_space = message.split(' ', 1)
@@ -372,7 +372,11 @@ async def handle_command_response(websocket, data):
         elif message_part_space[0] == 'Script':
             pass
         else:
-            print("未识别的命令响应")
+            # 记录其他类型的命令
+            if requestid in server_state.pending_commands:
+                command = server_state.pending_commands.pop(requestid)
+                server_state.information[connection_uuid].commandResponse_log[command] = message
+                print(f"命令 '{command}' 的响应已记录")
 
 async def handle_player_message(websocket, data, conversation):
     sender = data['body']['sender']
