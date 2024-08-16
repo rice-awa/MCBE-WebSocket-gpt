@@ -31,7 +31,7 @@ class GameInformation:
     player_inventory: Dict[str, Any] = field(default_factory=dict) # 玩家背包信息
     need_entityid: str = ''
     entity_info: str = ''
-    player_info: Dict[str, Any] = field(default_factory=dict) # 玩家自身信息
+    player_self_info: Dict[str, Any] = field(default_factory=dict) # 玩家自身信息
     player_transform_messages: Dict[str, PlayertransformInfo] = field(default_factory=dict)
     commandResponse_log: Dict[str, str] = field(default_factory=dict)
 
@@ -166,7 +166,7 @@ async def gpt_game_weather(websocket, dimension):
 async def gpt_game_players(websocket):
     connection_uuid = websocket.uuid
     players = server_state.information[connection_uuid].players
-    player_self_info = server_state.information[connection_uuid].player_info
+    player_self_info = server_state.information[connection_uuid].player_self_info
     player_transform_messages = server_state.information[connection_uuid].player_transform_messages
     all_players_info = [{"all_players": players}]
 
@@ -480,7 +480,7 @@ async def handle_data_part(message, connection_uuid, data_type, other_message=No
                 if data_type == 'inventory':
                     server_state.information[connection_uuid].player_inventory = data_dict
                 elif data_type == 'playerinfo':
-                    server_state.information[connection_uuid].player_info = data_dict
+                    server_state.information[connection_uuid].player_self_info = data_dict
                 # 处理其他类型的数据
             except json.JSONDecodeError as error:
                 print("解析数据时出错：", error)
