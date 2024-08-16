@@ -61,11 +61,11 @@ class GPTAPIConversation:
                 response.raise_for_status()
                 result = await response.json()
                 return await self.handle_response(result)
+        except aiohttp.ContentTypeError as e:
+            print("JSON decode error:", e)
         except aiohttp.ClientResponseError as errh:
             print("Http Error:", errh)
             print("Status code:", response.status)
-        except aiohttp.ContentTypeError as e:
-            print("JSON decode error:", e)
 
     async def handle_response(self, result):
         if 'choices' in result and result['choices']:

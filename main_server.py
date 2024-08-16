@@ -540,6 +540,7 @@ async def handle_event(websocket, data, conversation):
         await handle_command_response(websocket, data)
     if message_purpose == "event":
         await handle_event_message(websocket, data)
+    print(data)
 
 async def handle_connection(websocket, path):
     connection_uuid = str(uuid.uuid4())
