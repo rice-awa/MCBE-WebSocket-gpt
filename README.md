@@ -12,7 +12,7 @@
 
 - 1.新增 function-call 功能(见 function-call 分支)
 - 2.循环获取游戏数据，可能会导致服务器卡顿
-- 3.function-call 功能需要服务器端支持，目前仅支持服务器端，本地测试(main_local)无效
+- 3.function-call 功能需要服务器端支持，目前仅支持服务器端
 - 4.function-call 不支持关闭上下文，请手动保存关闭(断开连接也会关闭)
 
 **2024/7/31** (新增)
@@ -46,7 +46,7 @@
 - **GPT 回复生成**：通过 GPT API 生成回复内容。
 - **游戏显示**：将 GPT 生成的回复直接发送至 MCBE 中。
 - **支持上下文**：通过设置 `enable_history` 为 `True` 来启用会话历史记录。
-- **支持多个连接**: 每个连接为一个实例，可以多个实例同时连接。注：仅支持服务器(main_server)，本地测试(main_local)无效
+- **支持多个连接**: 每个连接为一个实例，可以多个实例同时连接。
 - **身份验证**：支持登录验证，防止 API 被滥用。
 - **进程守护**：使用 daemon.py 实现进程监控和自动重启。
 
@@ -76,10 +76,10 @@
 4. **运行 WebSocket 服务器**：
 
    - 本地测试
-     修改 `main_local.py` 中的 `api_url` 和 `api_key`，然后运行：
+     修改 `main_server.py` 中的 `api_url` 和 `api_key`默认值，然后运行：
 
      ```bash
-     python main_local.py
+     python main_server.py
      ```
 
    - 服务器运行(**如果使用 Linux，自带进程守护(daemon.py)**)
@@ -98,7 +98,7 @@
 
 - **API 设置**：
 
-  - 本地测试：在 `main_local.py` 中设置 `api_url` 和 `api_key`。
+  - 本地测试：设置 `api_url` 和 `api_key`。
   - 服务器：使用 `setup_service.sh` 脚本设置环境变量`API_URL` 和 `API_KEY`。注意：需要把`$`删掉，替换`\`后面的值即可
   - 这里推荐使用第三方转发 key，推荐使用这个 [apikey](https://burn.hair/) 当然官方 APIKEY 也可以。
 
@@ -177,7 +177,7 @@
 - [x] 提供详细的安装和配置教程
 - [x] 增加身份验证功能
 - [x] 实现进程守护
-- [ ] 增加更多游戏内交互功能
+- [x] 增加更多游戏内交互功能
 - [ ] 优化 API 密钥的安全存储方法
 
 ---
