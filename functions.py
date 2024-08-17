@@ -46,7 +46,7 @@ functions = [
     },
     {
     "name": "gpt_run_command",
-    "description": "能够在游戏中执行一个或多个命令，命令必须符合MCBE的命令格式，否则可能无效",
+    "description": "能够在游戏中执行一个或多个命令，命令须符合MCBE的命令格式，否则可能无效",
     "parameters": {
         "type": "object",
         "properties": {
@@ -89,5 +89,8 @@ functions = [
             }
         }
     },
+    {
+        "name": "gpt_get_commandlog",  # 函数名称
+        "description": "此函数能够获取命令执行的响应,返回上次执行命令的和执行结果,一些需要查看命令执行结果的，需要提示玩家查看",  # 函数描述   
+    }
 ]
-
