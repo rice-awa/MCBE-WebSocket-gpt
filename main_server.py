@@ -6,7 +6,7 @@ import auth
 import uuid
 import websockets
 from dataclasses import dataclass, field
-from typing import Dict, Any, List
+from typing import Dict, Any
 from collections import defaultdict
 from gptapi import GPTAPIConversation
 from functions import functions
@@ -523,12 +523,6 @@ async def handle_script_run_command(websocket, content):
     command = content
     await send_script_data(websocket, command, "server:run_command")
 
-async def handle_script(websocket, message):
-    connection_uuid = websocket.uuid
-    sanitized_message = json.dumps(message)
-    print(f"handle_script输出: {sanitized_message}")
-    await send_game_message(websocket, sanitized_message)
-
 async def handle_event(websocket, data, conversation):
     header = data.get('header', {})
     event_name = header.get('eventName')
@@ -540,7 +534,6 @@ async def handle_event(websocket, data, conversation):
         await handle_command_response(websocket, data)
     if message_purpose == "event":
         await handle_event_message(websocket, data)
-    print(data)
 
 async def handle_connection(websocket, path):
     connection_uuid = str(uuid.uuid4())
