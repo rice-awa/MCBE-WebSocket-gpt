@@ -269,7 +269,6 @@ async def run_command(websocket, command):
     await send_data(websocket, message)
     
     # 记录待响应的命令
-    connection_uuid = websocket.uuid
     server_state.pending_commands[requestid] = command
     
     return requestid
@@ -350,9 +349,6 @@ async def handle_command_response(websocket, data):
         print(f"命令响应: {message}")
         
         connection_uuid = websocket.uuid
-        
-        
-        
         message_part = message.split('：', 1)
         message_part_space = message.split(' ', 1)
 
@@ -425,9 +421,8 @@ async def handle_player_message(websocket, data, conversation):
             await send_game_message(websocket, "请先登录")
 
         if sender == "工具人":
-            if message.startswith("entity_position:"):
-                content = message.split(":", 1)[1].strip()
-                server_state.information[connection_uuid].entity_info = content
+            if message.startswith("entity_positionpart"): 
+                await handle_data_part(message, connection_uuid, 'entity_position')
             elif message.startswith("inventorypart"):
                 await handle_data_part(message, connection_uuid, 'inventory')
             elif message.startswith("playerinfopart"):
@@ -452,7 +447,7 @@ async def handle_display_command_log(websocket):
         await send_game_message(websocket, "暂无命令日志")
     await send_game_message(websocket, f"{log_content}")
 
-async def handle_data_part(message, connection_uuid, data_type, other_message=None):
+async def handle_data_part(message, connection_uuid, data_type):
     print(f"工具人说: {message}")
     match = re.match(rf'^{data_type}part(\d+)-(\d+):(.*)', message)
 
@@ -481,6 +476,8 @@ async def handle_data_part(message, connection_uuid, data_type, other_message=No
                     server_state.information[connection_uuid].player_inventory = data_dict
                 elif data_type == 'playerinfo':
                     server_state.information[connection_uuid].player_self_info = data_dict
+                elif data_type == 'entity_position':
+                    server_state.information[connection_uuid].entity_info = data_dict
                 # 处理其他类型的数据
             except json.JSONDecodeError as error:
                 print("解析数据时出错：", error)

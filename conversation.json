@@ -5,10 +5,87 @@
     },
     {
         "role": "user",
-        "content": "怎么速通MC"
+        "content": "找到最近的猪"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"status\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u518d\\u6b21\\u8be2\\u95ee\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
     },
     {
         "role": "assistant",
-        "content": "冒险家，要想速通《我的世界》，你可以参考以下几个步骤：\n\n1. **初始准备**：在出生点快速收集木材和石头，制作基本工具。\n2. **寻找村庄**：尽快找到一个村庄，可以获取食物、床和一些基础资源。\n3. **进入下界**：通过挖掘矿洞或找熔岩湖制造下界传送门。击败烈焰人获得烈焰棒，并与末影珍珠合成末影之眼。\n4. **寻找要塞**：利用末影之眼找到末地要塞，确保携带足够的装备和资源。\n5. **打败末影龙**：进入末地并摧毁末影水晶，然后击败末影龙。\n\n记住，这需要大量练习和熟悉游戏机制，希望这些建议能帮助你成功速通！祝你好运，冒险家！"
+        "content": "冒险家，请稍等片刻。我正在查找最近的猪。你可以再询问一次以获取结果。"
+    },
+    {
+        "role": "user",
+        "content": "找到最近的猪"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"status\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u518d\\u6b21\\u8be2\\u95ee\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "冒险家，稍等片刻，我会继续查找最近的猪。请再次询问以获取结果。"
+    },
+    {
+        "role": "user",
+        "content": "在线玩家信息"
+    },
+    {
+        "role": "function",
+        "name": "gpt_game_players",
+        "content": "[{\"all_players\": \"\"}, {\"player_name\": \"fantong7038\", \"player_health\": 20, \"player_tag\": [\"fantong7038\"], \"player_yRot\": -89.89754486083984, \"player_dimension\": \"the_end\", \"position\": {\"x\": -9.88298225402832, \"y\": 64.62001037597656, \"z\": 5.780177593231201}}]"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "冒险家，目前在线的玩家有：\n\n- **fantong7038**：位于末地，坐标为 (-9.9, 64.6, 5.8)，生命值为20。"
+    },
+    {
+        "role": "user",
+        "content": "找到最近的猪"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"status\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u518d\\u6b21\\u8be2\\u95ee\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "冒险家，请稍等片刻，我正在努力查找最近的猪。请再询问一次以获取结果。"
+    },
+    {
+        "role": "user",
+        "content": "找到最近的猪"
+    },
+    {
+        "role": "function",
+        "name": "gpt_world_entity",
+        "content": "{\"status\": \"\\u6b63\\u5728\\u67e5\\u8be2\\u5b9e\\u4f53\\u4fe1\\u606f\\uff0c\\u518d\\u6b21\\u8be2\\u95ee\\u53ef\\u83b7\\u53d6\"}"
+    },
+    {
+        "role": "user",
+        "content": ""
+    },
+    {
+        "role": "assistant",
+        "content": "冒险家，我会继续查找最近的猪。请再次询问以获取结果。"
     }
 ]
