@@ -174,12 +174,20 @@ async def gpt_game_players(websocket):
     if not player_transform_messages:
         return json.dumps({"error": "No player transform messages found."})
     
+    if not player_self_info:
+        player_health = None
+        player_tags = None
+
+    else:
+        player_health = player_self_info[player_name]["health"]
+        player_tags = player_self_info[player_name]["tags"]
+
     for player_name, player_info in player_transform_messages.items():
         if player_info:
             json_data = {
                 "player_name": player_info.name,
-                "player_health" : player_self_info[player_name]["health"],
-                "player_tag": player_self_info[player_name]["tags"],
+                "player_health" : player_health,
+                "player_tag": player_tags,
                 "player_yRot": player_info.yRot,
                 "player_dimension": player_info.dimension,
                 "position": player_info.position,
@@ -232,12 +240,15 @@ async def send_game_message(websocket, message):
     say_message = "§a" + say_message
     complete_message = json.dumps(say_message, ensure_ascii=False)
     print(complete_message)
+    #commandLine = f' say {complete_message}' 
+    commandLine = f'tellraw @a {{"rawtext":[{{"text":{complete_message}}}]}}'
+    
     game_message = {
         "body": {
             "origin": {
                 "type": "say"
             },
-            "commandLine": f'tellraw @a {{"rawtext":[{{"text":{complete_message}}}]}}',
+            "commandLine": commandLine,
             "version": 1
         },
         "header": {
@@ -399,8 +410,11 @@ async def handle_player_message(websocket, data, conversation):
                     await send_game_message(websocket, "登录成功！")
                     print("密钥验证成功，生成令牌")
                     print(f"令牌: {token}")
-                    # 存储OP列表
-                    server_state.information[connection_uuid].op_list.append(sender)
+
+                # 存储OP列表
+                op_list = server_state.information[connection_uuid].op_list
+                if sender not in op_list:
+                    op_list.append(sender)
 
             else:
                 await send_game_message(websocket, "登录失败，密钥无效!")
@@ -464,21 +478,21 @@ async def handle_op(websocket, content):
     
     if action == "查看":
         op_list_str = ", ".join(op_list) if op_list else "空"
-        await send_game_message(websocket, f"当前OP列表: {op_list_str}")
+        await send_game_message(websocket, f"当前wsOP列表: {op_list_str}")
     elif action == "添加" and len(parts) == 2:
         player_name = parts[1].strip()  # 移除可能的前后空格
         if player_name not in op_list:
             op_list.append(player_name)
-            await send_game_message(websocket, f"'{player_name}' 已被添加为OP")
+            await send_game_message(websocket, f"'{player_name}' 已被添加为wsOP")
         else:
-            await send_game_message(websocket, f"'{player_name}' 已经是OP了")
+            await send_game_message(websocket, f"'{player_name}' 已经是wsOP了")
     elif action == "删除" and len(parts) == 2:
         player_name = parts[1].strip()  # 移除可能的前后空格
         if player_name in op_list:
             op_list.remove(player_name)
-            await send_game_message(websocket, f"'{player_name}' 已从OP列表中移除")
+            await send_game_message(websocket, f"'{player_name}' 已从wsOP列表中移除")
         else:
-            await send_game_message(websocket, f"'{player_name}' 不在OP列表中")
+            await send_game_message(websocket, f"'{player_name}' 不在wsOP列表中")
     else:
         await send_game_message(websocket, "无效的操作。请使用：权限管理 [查看/添加/删除] [玩家名]")
 
