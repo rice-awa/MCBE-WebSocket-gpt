@@ -6,7 +6,7 @@ import auth
 import uuid
 import websockets
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Dict, Any, List
 from collections import defaultdict
 from gptapi import GPTAPIConversation
 from functions import functions
@@ -34,6 +34,7 @@ class GameInformation:
     player_self_info: Dict[str, Any] = field(default_factory=dict) # 玩家自身信息
     player_transform_messages: Dict[str, PlayertransformInfo] = field(default_factory=dict)
     commandResponse_log: Dict[str, str] = field(default_factory=dict)
+    op_list: List[str] = field(default_factory=list)
 
 @dataclass
 class ServerState:
@@ -69,7 +70,7 @@ GPT模型:{model}
 -----------
 """
 
-COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令", "命令日志"]
+COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令", "命令日志", "权限管理"]
 EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
 
 async def get_game_information(websocket, connection_uuid):
@@ -398,13 +399,17 @@ async def handle_player_message(websocket, data, conversation):
                     await send_game_message(websocket, "登录成功！")
                     print("密钥验证成功，生成令牌")
                     print(f"令牌: {token}")
+                    # 存储OP列表
+                    server_state.information[connection_uuid].op_list.append(sender)
+
             else:
                 await send_game_message(websocket, "登录失败，密钥无效!")
                 print("密钥无效")
             return
 
         stored_token = auth.get_stored_token(connection_uuid)
-        if stored_token and auth.verify_token(stored_token):
+        op_list = server_state.information[connection_uuid].op_list
+        if stored_token and auth.verify_token(stored_token) and sender in op_list:
             if command == "GPT 聊天":
                 await handle_gpt_chat(websocket, content, conversation)
             elif command == "GPT 脚本":
@@ -419,6 +424,8 @@ async def handle_player_message(websocket, data, conversation):
                 await handle_script_run_command(websocket, content)
             elif command == "命令日志":
                 await handle_display_command_log(websocket)
+            elif command == "权限管理":
+                await handle_op(websocket, content)
 
         if command and not auth.verify_token(stored_token):
             await send_game_message(websocket, "请先登录")
@@ -441,6 +448,39 @@ def parse_message(message):
         if message.startswith(cmd):
             return cmd, message[len(cmd):].strip()
     return "", message
+
+async def handle_op(websocket, content):
+    """改进的权限管理函数，更好地处理带空格的玩家名"""
+    connection_uuid = websocket.uuid
+    op_list = server_state.information[connection_uuid].op_list
+    
+    # 使用更智能的分割方法
+    parts = content.split(maxsplit=1)
+    if len(parts) < 1:
+        await send_game_message(websocket, "请使用正确的格式：权限管理 [查看/添加/删除] [玩家名]")
+        return
+
+    action = parts[0]
+    
+    if action == "查看":
+        op_list_str = ", ".join(op_list) if op_list else "空"
+        await send_game_message(websocket, f"当前OP列表: {op_list_str}")
+    elif action == "添加" and len(parts) == 2:
+        player_name = parts[1].strip()  # 移除可能的前后空格
+        if player_name not in op_list:
+            op_list.append(player_name)
+            await send_game_message(websocket, f"'{player_name}' 已被添加为OP")
+        else:
+            await send_game_message(websocket, f"'{player_name}' 已经是OP了")
+    elif action == "删除" and len(parts) == 2:
+        player_name = parts[1].strip()  # 移除可能的前后空格
+        if player_name in op_list:
+            op_list.remove(player_name)
+            await send_game_message(websocket, f"'{player_name}' 已从OP列表中移除")
+        else:
+            await send_game_message(websocket, f"'{player_name}' 不在OP列表中")
+    else:
+        await send_game_message(websocket, "无效的操作。请使用：权限管理 [查看/添加/删除] [玩家名]")
 
 async def handle_display_command_log(websocket):
     """显示命令日志"""
