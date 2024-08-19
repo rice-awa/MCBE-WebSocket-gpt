@@ -4,21 +4,8 @@ import os
 import json
 import datetime
 import aiofiles
-from typing import Dict
 
 class GPTAPIConversation:
-    _client_session: aiohttp.ClientSession = None
-
-    @classmethod
-    async def create_client_session(cls):
-        if cls._client_session is None or cls._client_session.closed:
-            cls._client_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=20))
-
-    @classmethod
-    async def close_client_session(cls):
-        if cls._client_session and not cls._client_session.closed:
-            await cls._client_session.close()
-
     def __init__(self, api_key, api_url, model, functions, functions_map, websocket, system_prompt="", enable_logging=False):
         self.api_key = api_key
         self.url = api_url
@@ -33,13 +20,14 @@ class GPTAPIConversation:
         self.functions = functions
         self.functions_map = functions_map
         self.websocket = websocket
+        self.session = None  # 延迟创建会话
 
-    async def initialize(self):
-        await self.create_client_session()
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
 
-    async def close(self):
-        self.messages = []
-        await self.close_client_session()
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.session.close()
 
     async def log_message(self, message):
         if self.enable_logging:
@@ -57,7 +45,8 @@ class GPTAPIConversation:
             })
 
     async def call_gpt(self, prompt):
-        await self.create_client_session()
+        if not self.session:
+            raise RuntimeError("Session has not been initialized. Use 'async with' to create the session.")
 
         self.add_system_prompt()
         await self.log_message(f"系统提示词：{self.system_prompt}")
@@ -78,8 +67,9 @@ class GPTAPIConversation:
 
         await self.log_message("发送给gpt的提示: " + prompt)
 
+        response = None
         try:
-            async with self._client_session.post(self.url, headers=self.headers, json=data) as response:
+            async with self.session.post(self.url, headers=self.headers, json=data) as response:
                 response.raise_for_status()
                 result = await response.json()
                 return await self.handle_response(result)
@@ -87,7 +77,8 @@ class GPTAPIConversation:
             print("JSON decode error:", e)
         except aiohttp.ClientResponseError as errh:
             print("Http Error:", errh)
-            print("Status code:", response.status)
+            if response:
+                print("Status code:", response.status)
         except Exception as e:
             print("Unexpected error:", e)
 
@@ -140,8 +131,12 @@ class GPTAPIConversation:
         async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
             await f.write(json.dumps(self.messages, ensure_ascii=False, indent=4))
 
-async def cleanup_resources():
-    for connection_uuid in list(gpt_instances.keys()):
-        await gpt_instances[connection_uuid].close()
-        del gpt_instances[connection_uuid]
-    await GPTAPIConversation.close_client_session()
+    async def close(self):
+        await self.session.close()
+
+    async def restart(self):
+        await self.__aexit__(None, None, None)
+        await asyncio.sleep(1)
+        await self.__aenter__()
+        self.messages = []
+
