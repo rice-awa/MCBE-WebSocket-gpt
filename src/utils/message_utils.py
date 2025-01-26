@@ -18,12 +18,12 @@ async def send_game_message(websocket, message):
         "body": {
             "origin": {"type": "say"},
             "commandLine": commandLine,
-            "version": 1
+            "version": 17039360
         },
         "header": {
             "requestId": str(uuid.uuid4()),
             "messagePurpose": "commandRequest",
-            "version": 1,
+            "version": 17039360,
             "EventName": "commandRequest"
         }
     }
@@ -38,12 +38,12 @@ async def run_command(websocket, command: str, requestid: str = None):
         "body": {
             "origin": {"type": "player"},
             "commandLine": command,
-            "version": 1
+            "version": 17039360
         },
         "header": {
             "requestId": requestid,
             "messagePurpose": "commandRequest",
-            "version": 1,
+            "version": 17039360,
             "EventName": "commandRequest"
         }
     }
@@ -52,12 +52,14 @@ async def run_command(websocket, command: str, requestid: str = None):
     return requestid
 
 async def send_script_data(websocket, command: str, script_type: str):
-    Logger.debug(f"发送脚本命令: {command}")
+    Logger.debug(f"发送脚本命令: {command}, 类型: {script_type}")
     message = {
         "body": {
-            "origin": {"type": script_type},
-            "commandLine": command,
-            "version": 1
+            "origin": {
+                "type": "player"
+            },
+            "commandLine": f"scriptevent {script_type} {command}",
+            "version": 17039360
         },
         "header": {
             "requestId": str(uuid.uuid4()),

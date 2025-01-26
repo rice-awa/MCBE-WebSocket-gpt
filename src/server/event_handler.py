@@ -96,27 +96,32 @@ class EventHandler:
         body = data.get('body', {})
         player = body.get('player', {})
         
-        player_info = PlayerTransformInfo(
-            name=player.get('name', 'Unknown'),
-            id=player.get('id', 'Unknown'),
-            color=player.get('color', 'Unknown'),
-            type=player.get('type', 'Unknown'),
-            variant=player.get('variant', 'Unknown'),
-            yRot=player.get('yRot', 'Unknown'),
-            dimension=self.dimension_map.get(player.get('dimension', 'Unknown'), 'Unknown'),
-            position={
-                "x": player.get('position', {}).get('x', 'Unknown'),
-                "y": player.get('position', {}).get('y', 'Unknown'),
-                "z": player.get('position', {}).get('z', 'Unknown')
-            }
-        )
+        # 只有当玩家名不是"工具人"时才处理
+        if player.get('name') != "工具人":
+            player_info = PlayerTransformInfo(
+                name=player.get('name', 'Unknown'),
+                id=player.get('id', 'Unknown'),
+                color=player.get('color', 'Unknown'),
+                type=player.get('type', 'Unknown'),
+                variant=player.get('variant', 'Unknown'),
+                yRot=player.get('yRot', 'Unknown'),
+                dimension=self.dimension_map.get(player.get('dimension', 'Unknown'), 'Unknown'),
+                position={
+                    "x": player.get('position', {}).get('x', 'Unknown'),
+                    "y": player.get('position', {}).get('y', 'Unknown'),
+                    "z": player.get('position', {}).get('z', 'Unknown')
+                }
+            )
 
-        connection_uuid = websocket.uuid
-        if connection_uuid not in self.server_state.information:
-            self.server_state.information[connection_uuid] = GameInformation()
-        
-        if player_info.name != "工具人":
+            connection_uuid = websocket.uuid
+            if connection_uuid not in self.server_state.information:
+                self.server_state.information[connection_uuid] = GameInformation()
+            
+            # 更新玩家位置信息
             self.server_state.information[connection_uuid].player_transform_messages[player_info.name] = player_info
+            
+            # 静默记录玩家移动信息
+            Logger.log_player_move_silent(str(player_info))
 
     async def handle_player_message(self, websocket, data: Dict[str, Any], conversation):
         """处理玩家消息"""

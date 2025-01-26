@@ -37,6 +37,9 @@ class MinecraftGPTServer:
     async def start(self):
         """启动WebSocket服务器"""
         try:
+            # 创建定期更新任务
+            periodic_task = asyncio.create_task(self.periodic_update())
+            
             async with websockets.serve(
                 self.handle_connection,
                 self.host,
@@ -46,7 +49,11 @@ class MinecraftGPTServer:
                 close_timeout=10
             ) as server:
                 Logger.info(f"WebSocket服务器已启动，正在监听 {self.host}:{self.port}")
-                await asyncio.Future()  # 保持服务器运行
+                # 等待服务器和定期更新任务
+                await asyncio.gather(
+                    asyncio.Future(),  # 保持服务器运行
+                    periodic_task
+                )
         except Exception as e:
             Logger.error(f"启动服务器时发生错误: {str(e)}")
             raise
@@ -55,13 +62,14 @@ class MinecraftGPTServer:
         """处理新的WebSocket连接"""
         connection_uuid = str(uuid.uuid4())
         websocket.uuid = connection_uuid
-        websocket.server_state = self.server_state  # 添加server_state属性
+        websocket.server_state = self.server_state
         Logger.info(f"客户端: {connection_uuid} 已连接")
         
         try:
-            # 设置心跳检测
-            websocket.ping_interval = 20
-            websocket.ping_timeout = 20
+            # 设置更宽松的心跳检测参数
+            websocket.ping_interval = 30  # 增加到30秒
+            websocket.ping_timeout = 30   # 增加到30秒
+            websocket.close_timeout = 15  # 增加关闭超时
             
             # 检查配置
             if 'gpt' not in self.config:
@@ -88,16 +96,22 @@ class MinecraftGPTServer:
                 await self.initialize_connection(websocket, connection_uuid)
                 await self.message_loop(websocket, conversation)
                 
-        except websockets.exceptions.ConnectionClosed:
-            Logger.info(f"客户端 {connection_uuid} 连接已断开")
+        except websockets.exceptions.ConnectionClosed as e:
+            if e.code == 1002:
+                Logger.warning(f"客户端 {connection_uuid} 协议错误断开: {e.reason}")
+            else:
+                Logger.info(f"客户端 {connection_uuid} 连接已断开: {e.reason}")
         except Exception as e:
             Logger.error(f"处理连接时发生错误: {str(e)}")
             Logger.error(f"错误类型: {type(e).__name__}")
             import traceback
             Logger.error(f"堆栈跟踪:\n{traceback.format_exc()}")
         finally:
-            await self.cleanup_connection(connection_uuid)
-            Logger.info(f"客户端 {connection_uuid} 资源清理完成")
+            try:
+                await self.cleanup_connection(connection_uuid)
+                Logger.info(f"客户端 {connection_uuid} 资源清理完成")
+            except Exception as cleanup_error:
+                Logger.error(f"清理资源时发生错误: {str(cleanup_error)}")
                 
     async def initialize_connection(self, websocket: websockets.WebSocketServerProtocol, connection_uuid: str):
         """初始化新的连接"""
@@ -136,63 +150,29 @@ class MinecraftGPTServer:
             
     async def cleanup_connection(self, connection_uuid: str):
         """清理断开的连接"""
-        print(f"客户端 {connection_uuid} 已断开连接，正在清理资源")
-        if connection_uuid in self.server_state.connections:
-            del self.server_state.connections[connection_uuid]
-        if connection_uuid in self.server_state.information:
-            del self.server_state.information[connection_uuid]
-            
-    async def update_game_information(self, websocket, connection_uuid: str):
-        """更新游戏信息"""
         try:
+            if connection_uuid in self.server_state.connections:
+                websocket = self.server_state.connections[connection_uuid]
+                try:
+                    await websocket.close()
+                except Exception:
+                    pass  # 忽略关闭时的错误
+                del self.server_state.connections[connection_uuid]
+                
             if connection_uuid in self.server_state.information:
-                info = self.server_state.information[connection_uuid]
+                del self.server_state.information[connection_uuid]
                 
-                # 清理旧数据
-                await self.clear_old_data(websocket, connection_uuid)
-                
-                # 查询基本游戏信息
-                await run_command(websocket, "weather query")
-                await asyncio.sleep(0.2)
-                await run_command(websocket, "list")
-                await asyncio.sleep(0.2)
-                await run_command(websocket, "time query day")
-                await run_command(websocket, "time query gametime")
-                await asyncio.sleep(0.2)
-                
-                # 查询实体信息
-                if info.need_entityid:
-                    await send_script_data(
-                        websocket, 
-                        f"check_entity {info.need_entityid}", 
-                        "server:script"
-                    )
-                    await asyncio.sleep(0.2)
-                
-                # 查询玩家信息
-                await send_script_data(websocket, "player_info", "server:script")
-                
-                Logger.debug(f"已更新 {connection_uuid} 的游戏信息")
+            if connection_uuid in self.server_state.received_parts:
+                del self.server_state.received_parts[connection_uuid]
                 
         except Exception as e:
-            Logger.error(f"更新游戏信息时出错: {str(e)}")
-            
-    async def clear_old_data(self, websocket, connection_uuid: str):
-        """清理旧的游戏数据"""
-        if connection_uuid in self.server_state.information:
-            info = self.server_state.information[connection_uuid]
-            # 清理临时信息
-            info.game_weather = ''
-            info.game_time = ''
-            info.game_day = ''
-            info.players = ''
-            # 保留玩家位置和背包等持久性数据
+            Logger.error(f"清理连接 {connection_uuid} 时发生错误: {str(e)}")
             
     async def periodic_update(self):
         """定期更新游戏信息"""
         while True:
             for connection_uuid, websocket in self.server_state.connections.items():
-                await self.update_game_information(websocket, connection_uuid)
+                await self.game_info_service.update_game_info(websocket, connection_uuid)
             await asyncio.sleep(10)
 
     async def message_loop(self, websocket, conversation):
@@ -201,7 +181,9 @@ class MinecraftGPTServer:
             async for message in websocket:
                 try:
                     data = json.loads(message)
-                    Logger.debug(f"收到消息: {data}")
+                    # 只有当消息不是PlayerTransform时才打印debug日志
+                    if data.get('header', {}).get('eventName') != 'PlayerTransform':
+                        Logger.debug(f"收到消息: {data}")
                     await self.handle_event(websocket, data, conversation)
                 except json.JSONDecodeError as e:
                     Logger.error(f"JSON解析错误: {str(e)}")

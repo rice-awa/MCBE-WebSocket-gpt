@@ -95,3 +95,10 @@ class Logger:
     def log_player_move(cls, message: str):
         logger = cls.get_logger('player_move', 'player_move.log')
         logger.info(message) 
+    
+    @classmethod
+    def log_player_move_silent(cls, message: str):
+        """静默记录玩家移动信息，只写入文件不打印到控制台"""
+        logger = cls.get_logger('player_move', 'player_move.log')
+        if logging.DEBUG >= logger.getEffectiveLevel():
+            logger.debug(message) 

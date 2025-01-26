@@ -25,6 +25,17 @@ class PlayerTransformInfo:
             position=data.get('position', {})
         )
 
+    def __str__(self) -> str:
+        """格式化玩家信息为字符串"""
+        return (
+            f"Player[{self.name}] "
+            f"pos({self.position.get('x', 0):.1f}, "
+            f"{self.position.get('y', 0):.1f}, "
+            f"{self.position.get('z', 0):.1f}) "
+            f"dim:{self.dimension} "
+            f"rot:{self.yRot:.1f}"
+        )
+
 @dataclass
 class GameInformation:
     game_weather: str = ''
