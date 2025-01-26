@@ -1,0 +1,25 @@
+minecraft_gpt/
+├── config/
+│   └── config.yaml
+├── logs/
+│   ├── minecraft_gpt.log
+│   ├── game_info.log      # 新增:游戏信息日志
+│   └── player_move.log    # 新增:玩家移动日志
+├── src/
+│   ├── __init__.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── game_info.py   # 新增:游戏信息数据模型
+│   │   └── server_state.py # 新增:服务器状态数据模型
+│   ├── services/
+│   │   ├── __init__.py 
+│   │   ├── game_info_service.py  # 新增:游戏信息服务
+│   │   └── gpt_service.py
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   └── logger.py      # 更新:添加多文件日志支持
+│   └── server/
+│       ├── __init__.py
+│       └── websocket_server.py
+├── main.py
+└── requirements.txt

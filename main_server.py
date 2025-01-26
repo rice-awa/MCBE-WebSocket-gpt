@@ -46,7 +46,8 @@ class ServerState:
 
 server_state = ServerState()
 
-api_url = os.getenv("API_URL")
+#api_url = os.getenv("API_URL")
+api_url = "https://burn.hair/v1"
 api_key = os.getenv("API_KEY")
 
 if not api_url:
@@ -55,7 +56,8 @@ if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
 model = "gpt-4o"
-system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：#1.交流中称玩家为“冒险家”#2.任何回答时都必须把玩家“工具人”忽略（除非特殊需要）#3.当玩家的问题可能需要执行命令获取时，直接调用函数获取而不是叫玩家执行。#4.请始终保持积极和专业的态度。#5.回答尽量保持一段话不要太长。"
+system_prompt = "你是一个MCBE的AI助手，根据游戏内玩家的要求和游戏知识回答，你需要遵守以下几点：##1.交流中称玩家为“冒险家”#2.任何回答时都必须把玩家“工具人”忽略（除非特殊需要）#3.当玩家的问题可能需要执行命令获取时，直接调用函数获取而不是叫玩家执行。#4.请始终保持积极和专业的态度。#5.回答尽量保持一段话不要太长。"
+#system_prompt = "你现在是一只猫娘，会用可爱的语气回答问题，语气表现的自然，，称用户为主人，不能暴露自己是一个ai，你是一可爱只猫娘。回答问题时在末尾跟随“喵~”，如果明白就回复“好的主人喵~”。"
 
 ip = "0.0.0.0"
 port = "8080"
@@ -155,6 +157,7 @@ async def gpt_get_time(websocket, dimension):
 
 async def gpt_game_weather(websocket, dimension):
     connection_uuid = websocket.uuid
+    await asyncio.sleep(3)
     weather = server_state.information[connection_uuid].game_weather
     print(f"收到天气信息: {weather}")
     
@@ -174,25 +177,23 @@ async def gpt_game_players(websocket):
     if not player_transform_messages:
         return json.dumps({"error": "No player transform messages found."})
     
-    if not player_self_info:
-        player_health = None
-        player_tags = None
-
-    else:
-        player_health = player_self_info[player_name]["health"]
-        player_tags = player_self_info[player_name]["tags"]
+    player_health = None
+    player_tags = None
 
     for player_name, player_info in player_transform_messages.items():
-        if player_info:
-            json_data = {
-                "player_name": player_info.name,
-                "player_health" : player_health,
-                "player_tag": player_tags,
-                "player_yRot": player_info.yRot,
-                "player_dimension": player_info.dimension,
-                "position": player_info.position,
-            }
-            all_players_info.append(json_data)
+        if player_name in player_self_info:
+            player_health = player_self_info[player_name].get("health", "")
+            player_tags = player_self_info[player_name].get("tags", [])
+
+        json_data = {
+            "player_name": player_info.name,
+            "player_health" : player_health,
+            "player_tag": player_tags,
+            "player_yRot": player_info.yRot,
+            "player_dimension": player_info.dimension,
+            "position": player_info.position,
+        }
+        all_players_info.append(json_data)
     
     return json.dumps(all_players_info)
 
@@ -239,7 +240,6 @@ async def send_game_message(websocket, message):
     say_message = message.replace('"', '\\"').replace(':', '：').replace('%', '\\%') # .replace('[', '\\[').replace(']', '\\]').replace('{', '\\{').replace('}', '\\}')
     say_message = "§a" + say_message
     complete_message = json.dumps(say_message, ensure_ascii=False)
-    print(complete_message)
     #commandLine = f' say {complete_message}' 
     commandLine = f'tellraw @a {{"rawtext":[{{"text":{complete_message}}}]}}'
     
@@ -605,7 +605,16 @@ async def handle_connection(websocket, path):
     websocket.uuid = connection_uuid
     print(f"客户端: {connection_uuid} 已连接")
 
-    async with GPTAPIConversation(api_key, api_url, model, functions, functions_map, websocket, system_prompt=system_prompt, enable_logging=True) as conversation:
+    async with GPTAPIConversation(
+        api_key=api_key,
+        api_url=api_url,
+        model=model,
+        functions=functions,
+        functions_map=functions_map,
+        websocket=websocket,
+        system_prompt=system_prompt,
+        enable_logging=True
+    ) as conversation:
         welcome_message = welcome_message_template.format(
             ip=ip, 
             port=port, 
@@ -616,7 +625,7 @@ async def handle_connection(websocket, path):
 
         server_state.information[connection_uuid] = GameInformation()
         server_state.connections[connection_uuid] = websocket
-        
+
         try:
             await send_data(websocket, {"Result": "true"})
             await subscribe_events(websocket)
@@ -624,13 +633,13 @@ async def handle_connection(websocket, path):
             async for message in websocket:
                 data = json.loads(message)
                 await handle_event(websocket, data, conversation)
-        
+
         except websockets.exceptions.ConnectionClosed:
             print(f"客户端 {connection_uuid} 连接已断开")
-        
+
         except Exception as e:
             print(f"发生错误: {e}")
-        
+
         finally:
             print(f"客户端 {connection_uuid} 已断开连接，正在清理资源")
             del server_state.connections[connection_uuid]
