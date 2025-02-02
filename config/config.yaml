@@ -1,8 +1,10 @@
 server:
   host: "0.0.0.0"
   port: 8080
+  update_info: False
 
 gpt:
+  api_key: $FROM_ENV
   api_url: "https://burn.hair/v1"
   model: "gpt-4o"
   system_prompt: |

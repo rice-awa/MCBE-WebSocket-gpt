@@ -17,6 +17,9 @@ class Logger:
             # 控制台处理器
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setLevel(logging.DEBUG)
+
+            # 确保日志目录存在
+            os.makedirs('logs', exist_ok=True)
             
             # 文件处理器
             file_handler = logging.FileHandler(

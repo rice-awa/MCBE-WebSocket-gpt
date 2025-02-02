@@ -25,11 +25,6 @@ def validate_config(config):
 
 async def main():
     try:
-        # 检查环境变量
-        api_key = os.getenv("API_KEY")
-        if not api_key:
-            raise ValueError("环境变量 API_KEY 未设置")
-        
         # 加载并验证配置
         config_path = 'config/config.yaml'
         if not os.path.exists(config_path):
@@ -37,6 +32,13 @@ async def main():
             
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
+        
+        # 检查环境变量
+        api_key = os.getenv("API_KEY") if config['gpt']['api_key'] == "$FORM_ENV" else config['gpt']['api_key']
+
+        if not api_key:
+            raise ValueError("环境变量 API_KEY 未设置")
+        
         
         validate_config(config)
         Logger.info("配置验证通过")
@@ -49,7 +51,6 @@ async def main():
         
         # 启动定期更新任务和WebSocket服务器
         await asyncio.gather(
-            server.start_periodic_updates(),
             server.start()
         )
         
