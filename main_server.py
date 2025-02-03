@@ -319,10 +319,21 @@ async def handle_connection(websocket, path):
         print(f"客户端{connection_uuid}已断开连接")
         await conversation.clean_history()
 
+
+websocket_config = {
+    'ping_interval': 30,
+    'ping_timeout': 10,
+    'close_timeout': 10,
+    'max_size': 10 * 1024 * 1024,  # 10MB
+    'max_queue': 32,
+    'read_limit': 65536,
+    'write_limit': 65536,
+}
+
 async def main():
-    async with websockets.serve(handle_connection, ip, port):
+    async with websockets.serve(handle_connection, ip, port, **websocket_config):
         print(f"WebSocket服务器已启动，正在监听 {ip}:{port}")
-        await asyncio.Future()  # 保持服务器运行
+        await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())

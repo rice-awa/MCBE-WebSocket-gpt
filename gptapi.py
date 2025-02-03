@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+import asyncio
 import os
 import json
 import datetime
@@ -42,31 +43,37 @@ class GPTAPIConversation:
             self.log_message(f"连接测试失败: {str(e)}")
             return False
         
-    async def call_gpt(self, prompt):
-        if not await self.check_connection():
-            yield {"error": "连接失败"}
-            return
-        self.add_system_prompt()
-        self.log_message(f"系统提示词：{self.system_prompt}")
-        self.messages.append({ "role": "user","content": prompt })
-
-        data = {
-            "messages": self.messages,
-            "model": self.model,
-            "temperature": 0.5,
-            "stream": True,  # 启用流式响应
-            "max_tokens": None
-        }
-        self.log_message("发送给gpt的提示: " + prompt)
-        
+    async def call_gpt(self, prompt, timeout=60):
         try:
-            response = await self.client.chat.completions.create(**data)
-            async for chunk in self.handle_stream_response(response):
-                yield chunk
-        except Exception as e:
-            print(f"调用GPT API时出错: {str(e)}")
-            self.log_message(f"调用GPT API时出错: {str(e)}")
-            yield None
+            async with asyncio.timeout(timeout):
+                if not await self.check_connection():
+                    yield {"error": "连接失败"}
+                    return
+                self.add_system_prompt()
+                self.log_message(f"系统提示词：{self.system_prompt}")
+                self.messages.append({ "role": "user","content": prompt })
+
+                data = {
+                    "messages": self.messages,
+                    "model": self.model,
+                    "temperature": 0.5,
+                    "stream": True,  # 启用流式响应
+                    "max_tokens": None
+                }
+                self.log_message("发送给gpt的提示: " + prompt)
+                
+                try:
+                    response = await self.client.chat.completions.create(**data)
+                    async for chunk in self.handle_stream_response(response):
+                        yield chunk
+                except Exception as e:
+                    print(f"调用GPT API时出错: {str(e)}")
+                    self.log_message(f"调用GPT API时出错: {str(e)}")
+                    yield None
+
+        except asyncio.TimeoutError:
+            self.log_message("API调用超时")
+            yield {"type": "error", "content": "请求超时"}
     
     async def handle_stream_response(self, response):
         reasoning_content = ""
