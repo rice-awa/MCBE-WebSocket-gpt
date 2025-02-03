@@ -47,7 +47,7 @@ class GPTAPIConversation:
         try:
             async with asyncio.timeout(timeout):
                 if not await self.check_connection():
-                    yield {"error": "连接失败"}
+                    yield {"error": "API连接失败"}
                     return
                 self.add_system_prompt()
                 self.log_message(f"系统提示词：{self.system_prompt}")
@@ -73,7 +73,7 @@ class GPTAPIConversation:
 
         except asyncio.TimeoutError:
             self.log_message("API调用超时")
-            yield {"type": "error", "content": "请求超时"}
+            yield {"type": "error", "content": "API请求超时"}
     
     async def handle_stream_response(self, response):
         reasoning_content = ""
@@ -82,9 +82,10 @@ class GPTAPIConversation:
         try:
             async for chunk in response:
                 try:
+                    #print(chunk)
                     if chunk.choices:
                         delta = chunk.choices[0].delta
-                        if hasattr(delta, 'reasoning_content'):
+                        if hasattr(delta, 'reasoning_content') and delta.reasoning_content is not None:
                             reasoning_content += delta.reasoning_content
                             yield {"reasoning_content": delta.reasoning_content, "content": None}
                         elif hasattr(delta, 'content') and delta.content is not None:  # 添加 None 检查

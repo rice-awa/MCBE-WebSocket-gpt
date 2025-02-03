@@ -23,7 +23,7 @@ model = "deepseek-ai/DeepSeek-R1" # 模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符，尽量不要使用markdown" # 系统提示词
 
 # 上下文（临时）
-enable_history = True # 默认关闭
+enable_history = True
 output_think = True
 
 # 获取本地IP地址
@@ -34,8 +34,9 @@ welcome_message_template = """-----------
 成功连接WebSocket服务器
 服务器ip:{ip}
 端口:{port}
-GPT上下文:{enable_history}
-GPT模型:{model}
+上下文:{enable_history}
+模型:{model}
+思维链输出:{output_think}
 连接UUID:{uuid}
 -----------"""
 
@@ -47,7 +48,7 @@ async def gpt_main(conversation, player_prompt):
         reasoning_buffer = ""  # 缓存思考过程
         content_buffer = ""  # 缓存最终内容
 
-        async for chunk in conversation.call_gpt(player_prompt):  # 直接使用异步迭代器
+        async for chunk in conversation.call_gpt(player_prompt):
             if chunk is None:
                 content = '错误: GPT回复为None'
                 conversation.log_message(content)
@@ -219,7 +220,7 @@ def parse_message(message):
 
 async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    is_thinking = False  # 追踪是否正在发送思考内容
+    is_thinking = False
     
     async for result in gpt_main(conversation, prompt):
         if result["type"] == "reasoning" and output_think:
@@ -245,17 +246,25 @@ async def handle_gpt_chat(websocket, content, conversation):
     
     # 如果循环结束时还在思考状态，确保发送结束标签
     if is_thinking:
-        await send_game_message(websocket, "|think|\n")
+        await send_game_message(websocket, "|think-end|\n")
 
 async def handle_gpt_script(websocket, content, conversation):
     prompt = content
-    result = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
-    
-    main_content, reasoning_content = result
-    
-    await send_script_data(websocket, main_content)
-    await send_script_data(websocket, reasoning_content)  # 使用脚本处理数据
-    await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+    is_thinking = False
+
+    async for result in gpt_main(conversation, prompt):
+        if result["type"] == "reasoning" and output_think:
+            if not is_thinking:
+                await send_script_data(websocket, "|think-start|\n")
+                is_thinking = True
+            await send_script_data(websocket, f"{result['content']}")
+        elif result["type"] == "content":
+            if is_thinking:
+                await send_script_data(websocket, "|think-end|\n")
+                is_thinking = False
+            await send_script_data(websocket, result["content"])
+    if is_thinking:
+        await send_script_data(websocket, "|think-end|\n")
 
 async def handle_gpt_save(websocket, conversation):
     if not conversation:
@@ -302,7 +311,7 @@ async def handle_connection(websocket, path):
     print(f"客户端:{connection_uuid}已连接")
     conversation = GPTAPIConversation(api_key, api_url, model, system_prompt, enable_logging=True)
     welcome_message = welcome_message_template.format(
-        ip=ip, port=port, enable_history=enable_history, model=model, uuid=connection_uuid
+        ip=ip, port=port, enable_history=enable_history, output_think=output_think, model=model, uuid=connection_uuid
     )
     await send_game_message(websocket, welcome_message)
     try:
@@ -322,8 +331,8 @@ async def handle_connection(websocket, path):
 
 websocket_config = {
     'ping_interval': 30,
-    'ping_timeout': 10,
-    'close_timeout': 10,
+    'ping_timeout': 15,
+    'close_timeout': 15,
     'max_size': 10 * 1024 * 1024,  # 10MB
     'max_queue': 32,
     'read_limit': 65536,
