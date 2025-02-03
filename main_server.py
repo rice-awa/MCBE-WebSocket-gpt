@@ -85,7 +85,7 @@ async def gpt_main(conversation, player_prompt):
             await conversation.clean_history()
 
     except Exception as e:
-        conversation.log_message(f"gpt_main 函数中发生错误: {str(e)}")
+        conversation.log_message(f"gpt_main 函数中发生错误: {e}")
         yield {"type": "error", "content": f"错误: {str(e)}"}
 
 async def send_data(websocket, message):
