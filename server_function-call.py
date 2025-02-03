@@ -70,7 +70,7 @@ GPT模型:{model}
 """
 
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "运行命令", "GPT 脚本", "测试天气", "脚本命令", "命令日志"]
-EVENT_LISTS = ["PlayerMessage", "PlayerTransform"]
+EVENT_LISTS = ["PlayerMessage", "PlayerTransform", "ItemUsed"]
 
 async def get_game_information(websocket, connection_uuid):
     await run_command(websocket, "weather query")
@@ -290,11 +290,14 @@ async def send_script_data(websocket, content, messageid="server:data"):
     }
     await send_data(websocket, message)
 
-async def handle_event_message(websocket, data):
+async def handle_event_message(websocket, data, conversation):
     body = data.get('body', {})
     header = data.get('header', {})
     event_name = header.get('eventName', '')
 
+    if event_name == "PlayerMessage":
+        await handle_player_message(websocket, data, conversation)
+    
     if event_name == "PlayerTransform":
         player = body.get('player', {})
         player_name = player.get('name', 'Unknown')
@@ -336,6 +339,16 @@ async def handle_event_message(websocket, data):
             server_state.information[connection_uuid].player_transform_messages[player_name] = player_info
 
         #print(f"存储在字典的信息： {server_state.information[connection_uuid]}")
+    # if event_name == "ItemUsed":
+    #     player = body.get('player', {})
+    #     player_name = player.get('name', 'Unknown')
+    #     item = body.get('item', {})
+    #     name = item.get('id', 'Unknown')
+    #     data = item.get('aux', 'Unknown')
+    #     namespace = item.get('namespace', 'Unknown')
+    #     item_count = body.get('count', {})
+
+    #     await send_game_message(websocket, f"玩家 {player_name} 使用了 {namespace}:{name}x{item_count} 数据值 {data} 命名空间 {namespace}")
 
 async def handle_command_response(websocket, data):
     """处理命令响应"""
@@ -348,8 +361,6 @@ async def handle_command_response(websocket, data):
         print(f"命令响应: {message}")
         
         connection_uuid = websocket.uuid
-        
-        
         
         message_part = message.split('：', 1)
         message_part_space = message.split(' ', 1)
@@ -369,8 +380,8 @@ async def handle_command_response(websocket, data):
             server_state.information[connection_uuid].game_day = gameday
         elif message_part_space[0] == 'Script':
             pass
+
         else:
-            # 记录其他类型的命令
             if requestid in server_state.pending_commands:
                 command = server_state.pending_commands.pop(requestid)
                 server_state.information[connection_uuid].commandResponse_log[command] = message
@@ -381,7 +392,8 @@ async def handle_player_message(websocket, data, conversation):
     message = data['body']['message']
 
     if sender and message:
-        print(f"玩家 {sender} 说: {message}")
+        if sender != '外部':
+            print(f"玩家 {sender} 说: {message}")
 
         command, content = parse_message(message)
 
@@ -523,15 +535,12 @@ async def handle_script_run_command(websocket, content):
 
 async def handle_event(websocket, data, conversation):
     header = data.get('header', {})
-    event_name = header.get('eventName')
     message_purpose = header.get('messagePurpose')
 
-    if event_name == "PlayerMessage":
-        await handle_player_message(websocket, data, conversation)
     if message_purpose == "commandResponse":
         await handle_command_response(websocket, data)
     if message_purpose == "event":
-        await handle_event_message(websocket, data)
+        await handle_event_message(websocket, data, conversation)
 
 async def handle_connection(websocket, path):
     connection_uuid = str(uuid.uuid4())

@@ -8,7 +8,7 @@ class GPTAPIConversation:
     def __init__(self, api_key, api_url, model, functions, functions_map, websocket, system_prompt="", enable_logging=False):
         self.api_key = api_key
         self.session = aiohttp.ClientSession()  # 创建一个aiohttp会话
-        self.url = api_url
+        self.url = rf"{api_url}/v1/chat/completions"
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
