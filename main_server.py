@@ -10,12 +10,16 @@ from gptapi import GPTAPIConversation
 api_url = "https://api.siliconflow.cn" # API地址
 api_key = os.getenv("siliconflow_apikey")  # API密钥
 
+# api_url = "https://burn.hair/v1" # API地址
+# api_key = os.getenv("API_KEY")  # API密钥
+
 if not api_url:
     raise ValueError("API_URL 环境变量未设置")
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "deepseek-ai/DeepSeek-R1" # gpt模型
+model = "deepseek-ai/DeepSeek-R1" # 模型
+#model = "gpt-4o" # 模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 # 上下文（临时）
@@ -38,29 +42,50 @@ GPT模型:{model}
 SENDERS = ['外部']
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
 
-async def gpt_main(conversation, player_prompt, enable_history=True):
+async def gpt_main(conversation, player_prompt):
     try:
-        # 发送提示到GPT并获取回复
-        result = await conversation.call_gpt(player_prompt)
-        if result is None:
-            content = '错误: GPT回复为None'
-            conversation.log_message(content)
-            return content
+        reasoning_buffer = ""  # 缓存思考过程
+        content_buffer = ""  # 缓存最终内容
 
-        content, reasoning_content = result  # 正确解包元组
-        print(f"gpt消息: {content}\n思考内容:{reasoning_content}")
+        async for chunk in conversation.call_gpt(player_prompt):  # 直接使用异步迭代器
+            if chunk is None:
+                content = '错误: GPT回复为None'
+                conversation.log_message(content)
+                yield {"type": "error", "content": content}
+                return
+
+            if chunk["reasoning_content"]:
+                reasoning_buffer += chunk["reasoning_content"]
+                # 检查是否有完整的句子
+                sentences = re.split(r'(?<=[。．.])', reasoning_buffer)
+                if len(sentences) > 1:  # 有完整的句子
+                    for sentence in sentences[:-1]:  # 发送完整的句子，保留未完成的句子
+                        if sentence.strip():
+                            yield {"type": "reasoning", "content": sentence}
+                    reasoning_buffer = sentences[-1]  # 更新缓存区为未完成的句子
+
+            if chunk["content"]:
+                content_buffer += chunk["content"]
+                # 检查是否有完整的句子
+                sentences = re.split(r'(?<=[。．.])', content_buffer)
+                if len(sentences) > 1:  # 有完整的句子
+                    for sentence in sentences[:-1]:  # 发送完整的句子，保留未完成的句子
+                        if sentence.strip():
+                            yield {"type": "content", "content": sentence}
+                    content_buffer = sentences[-1]  # 更新缓存区为未完成的句子
+
+        # 发送缓存区剩余的内容
+        if reasoning_buffer.strip():
+            yield {"type": "reasoning", "content": reasoning_buffer}
+        if content_buffer.strip():
+            yield {"type": "content", "content": content_buffer}
 
         if not enable_history:
             await conversation.close()
-        
-        if reasoning_content != '' and content:
-            return content, reasoning_content
-        
-        return content
 
     except Exception as e:
         conversation.log_message(f"gpt_main 函数中发生错误: {str(e)}")
-        return f"错误: {str(e)}"
+        yield {"type": "error", "content": f"错误: {str(e)}"}
 
 async def send_data(websocket, message):
     """向客户端发送数据"""
@@ -148,10 +173,7 @@ async def handle_player_message(websocket, data, conversation):
 
     if sender and message:
         # 过滤服务器消息
-        # for server_sender in SENDERS:
-        #     if sender != server_sender:
-        #         print(f"玩家 {sender} 说: {message}")
-        if sender != '外部':
+        if sender not in SENDERS:
             print(f"玩家 {sender} 说: {message}")
 
         command, content = parse_message(message)
@@ -195,35 +217,37 @@ def parse_message(message):
             return cmd, message[len(cmd):].strip()
     return "", message
 
-import re
-import asyncio
-
-import re
-import asyncio
-
 async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    result = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    is_thinking = False  # 追踪是否正在发送思考内容
     
-    main_content, reasoning_content = result
-    
-    if reasoning_content:
-        max_length = 120 #设置最大字符数量
-        for i in range(0, len(reasoning_content), max_length):
-            sentence = reasoning_content[i:i+max_length].strip()
-            if sentence:
-                await send_game_message(websocket, f"|think|\n{sentence}\n|think|\n")
-                await asyncio.sleep(0.1)
-    
-    if main_content:
-        # 使用正则表达式按句号（包括英文句号和中文句号）分割 reasoning_content
-        main_sentences = re.split(r'(?<=[。．.])', main_content)
+    async for result in gpt_main(conversation, prompt):
+        if result["type"] == "reasoning":
+            if not is_thinking:
+                # 开始思考，发送开始标签
+                await send_game_message(websocket, "|think|\n")
+                is_thinking = True
+            await send_game_message(websocket, f"{result['content']}\n")
         
-        for sentence in main_sentences:
-            if sentence.strip():
-                await send_game_message(websocket, sentence) 
-                await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+        elif result["type"] == "content":
+            if is_thinking:
+                # 如果之前在思考，现在要发送内容了，先发送结束标签
+                await send_game_message(websocket, "|think|\n")
+                is_thinking = False
+            await send_game_message(websocket, result["content"])
+        
+        elif result["type"] == "error":
+            if is_thinking:
+                # 如果发生错误时正在思考，发送结束标签
+                await send_game_message(websocket, "|think|\n")
+                is_thinking = False
+            await send_game_message(websocket, result["content"])
 
+        await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+    
+    # 如果循环结束时还在思考状态，确保发送结束标签
+    if is_thinking:
+        await send_game_message(websocket, "|think|\n")
 
 async def handle_gpt_script(websocket, content, conversation):
     prompt = content

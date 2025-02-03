@@ -37,31 +37,41 @@ class GPTAPIConversation:
             "messages": self.messages,
             "model": self.model,
             "temperature": 0.5,
-            "presence_penalty": 2
+            "presence_penalty": 2,
+            "stream": True  # 启用流式响应
         }
         self.log_message("发送给gpt的提示: " + prompt)
         
         try:
             response = await self.client.chat.completions.create(**data)
-            return await self.handle_response(response)
+            async for chunk in self.handle_stream_response(response):
+                yield chunk
         except Exception as e:
-
             print(f"调用GPT API时出错: {str(e)}")
             self.log_message(f"调用GPT API时出错: {str(e)}")
-            return None
+            yield None
         
-    async def handle_response(self, response):
-        if response.choices:
-            reasoning_content = getattr(response.choices[0].message, 'reasoning_content', "")
-            content = response.choices[0].message.content
+    async def handle_stream_response(self, response):
+        reasoning_content = ""
+        content = ""
 
-            self.log_message(f"Final Reasoning Content: {reasoning_content}")
-            self.log_message(f"Final Content: {content}")
-            self.messages.append({
-                "role": "assistant",
-                "content": content
-            })
-            return content, reasoning_content
+        async for chunk in response:
+            if chunk.choices:
+                delta = chunk.choices[0].delta
+                if hasattr(delta, 'reasoning_content'):
+                    reasoning_content += delta.reasoning_content
+                    yield {"reasoning_content": delta.reasoning_content, "content": None}
+                elif hasattr(delta, 'content'):
+                    content += delta.content
+                    yield {"reasoning_content": None, "content": delta.content}
+
+        self.log_message(f"Final Reasoning Content: {reasoning_content}")
+        self.log_message(f"Final Content: {content}")
+        
+        self.messages.append({
+            "role": "assistant",
+            "content": content
+        })
 
     def save_conversation(self):
         file_path = os.path.join(os.getcwd(), 'conversation.json')
