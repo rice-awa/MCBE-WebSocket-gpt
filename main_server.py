@@ -20,10 +20,10 @@ if not api_key:
 
 model = "deepseek-ai/DeepSeek-R1" # 模型
 #model = "gpt-4o" # 模型
-system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
+system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符，尽量不要使用markdown" # 系统提示词
 
 # 上下文（临时）
-enable_history = False # 默认关闭
+enable_history = True # 默认关闭
 output_think = True
 
 # 获取本地IP地址
@@ -54,7 +54,7 @@ async def gpt_main(conversation, player_prompt):
                 yield {"type": "error", "content": content}
                 return
 
-            if chunk["reasoning_content"]:
+            if chunk["reasoning_content"] and output_think:
                 reasoning_buffer += chunk["reasoning_content"]
                 # 检查是否有完整的句子
                 sentences = re.split(r'(?<=[。．.])', reasoning_buffer)
@@ -81,7 +81,7 @@ async def gpt_main(conversation, player_prompt):
             yield {"type": "content", "content": content_buffer}
 
         if not enable_history:
-            await conversation.close()
+            await conversation.clean_history()
 
     except Exception as e:
         conversation.log_message(f"gpt_main 函数中发生错误: {str(e)}")
@@ -222,24 +222,22 @@ async def handle_gpt_chat(websocket, content, conversation):
     is_thinking = False  # 追踪是否正在发送思考内容
     
     async for result in gpt_main(conversation, prompt):
-        if result["type"] == "reasoning":
+        if result["type"] == "reasoning" and output_think:
             if not is_thinking:
                 # 开始思考，发送开始标签
-                await send_game_message(websocket, "|think|\n")
+                await send_game_message(websocket, "|think-start|\n")
                 is_thinking = True
-            await send_game_message(websocket, f"{result['content']}\n")
+            await send_game_message(websocket, f"{result['content']}")
         
         elif result["type"] == "content":
             if is_thinking:
                 # 如果之前在思考，现在要发送内容了，先发送结束标签
-                await send_game_message(websocket, "|think|\n")
+                await send_game_message(websocket, "|think-end|\n")
                 is_thinking = False
             await send_game_message(websocket, result["content"])
         
         elif result["type"] == "error":
             if is_thinking:
-                # 如果发生错误时正在思考，发送结束标签
-                await send_game_message(websocket, "|think|\n")
                 is_thinking = False
             await send_game_message(websocket, result["content"])
 
@@ -265,7 +263,7 @@ async def handle_gpt_save(websocket, conversation):
         return 
     else:
         conversation.save_conversation()
-    await conversation.close()
+    await conversation.clean_history()
     await send_game_message(websocket, "对话关闭，数据已保存！")
 
 async def handle_gpt_context(websocket, content):
@@ -294,10 +292,9 @@ async def handle_event(websocket, data, conversation):
     event_name = header.get('eventName')
     if event_name == "PlayerMessage":
         await handle_player_message(websocket, data, conversation)
-    # 屏蔽玩家操作事件，避免刷屏打印数据
-    if event_name != "PlayerTransform":
-        print(data)
-        print()
+    # else:
+    #     print(data)
+    #     print()
 
 async def handle_connection(websocket, path):
     global connection_uuid
@@ -320,7 +317,7 @@ async def handle_connection(websocket, path):
         print(f"发生错误: {e}")
     finally:
         print(f"客户端{connection_uuid}已断开连接")
-        await conversation.close()
+        await conversation.clean_history()
 
 async def main():
     async with websockets.serve(handle_connection, ip, port):
