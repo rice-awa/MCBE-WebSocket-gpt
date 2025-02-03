@@ -1,5 +1,4 @@
-import aiohttp
-import asyncio
+from openai import AsyncOpenAI
 import os
 import json
 import datetime
@@ -7,12 +6,8 @@ import datetime
 class GPTAPIConversation:
     def __init__(self, api_key, api_url, model, system_prompt="", enable_logging=False):
         self.api_key = api_key
-        self.session = aiohttp.ClientSession()  # 创建一个aiohttp会话
+        self.client = AsyncOpenAI(api_key=api_key, base_url=api_url)
         self.url = api_url
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
         self.messages = []
         self.model = model
         self.system_prompt = system_prompt
@@ -36,10 +31,8 @@ class GPTAPIConversation:
     async def call_gpt(self, prompt):
         self.add_system_prompt()
         self.log_message(f"系统提示词：{self.system_prompt}")
-        self.messages.append({
-            "role": "user",
-            "content": prompt
-        })
+        self.messages.append({ "role": "user","content": prompt })
+
         data = {
             "messages": self.messages,
             "model": self.model,
@@ -47,31 +40,28 @@ class GPTAPIConversation:
             "presence_penalty": 2
         }
         self.log_message("发送给gpt的提示: " + prompt)
+        
+        try:
+            response = await self.client.chat.completions.create(**data)
+            return await self.handle_response(response)
+        except Exception as e:
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(self.url, headers=self.headers, json=data) as response:
-                    response.raise_for_status()
-                    result = await response.json()
-                    return await self.handle_response(result)
-            except aiohttp.ClientResponseError as errh:
-                print("Http Error:", errh)
-                print("Status code:", response.status)
-            except aiohttp.ContentTypeError as e:
-                print("JSON decode error:", e)
+            print(f"调用GPT API时出错: {str(e)}")
+            self.log_message(f"调用GPT API时出错: {str(e)}")
+            return None
+        
+    async def handle_response(self, response):
+        if response.choices:
+            reasoning_content = getattr(response.choices[0].message, 'reasoning_content', "")
+            content = response.choices[0].message.content
 
-    async def handle_response(self, result):
-        if 'choices' in result and result['choices']:
-            content = ""
-            for choice in result['choices']:
-                if 'message' in choice:
-                    content = choice['message']['content']
-                    self.log_message(f"gpt:{content}")
-                    self.messages.append({
-                        "role": "assistant",
-                        "content": content
-                    })
-            return content
+            self.log_message(f"Final Reasoning Content: {reasoning_content}")
+            self.log_message(f"Final Content: {content}")
+            self.messages.append({
+                "role": "assistant",
+                "content": content
+            })
+            return content, reasoning_content
 
     def save_conversation(self):
         file_path = os.path.join(os.getcwd(), 'conversation.json')
@@ -81,4 +71,4 @@ class GPTAPIConversation:
             json.dump(self.messages, f, ensure_ascii=False, indent=4)
 
     async def close(self):
-        await self.session.close()  # 关闭会话
+        await self.client.close()  # 关闭 AsyncOpenAI 客户端

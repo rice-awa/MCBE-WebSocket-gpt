@@ -7,19 +7,20 @@ import uuid
 import websockets
 from gptapi import GPTAPIConversation
 
-api_url = os.getenv("API_URL")  # API地址
-api_key = os.getenv("API_KEY")  # API密钥
+api_url = "https://api.siliconflow.cn" # API地址
+api_key = os.getenv("siliconflow_apikey")  # API密钥
 
 if not api_url:
     raise ValueError("API_URL 环境变量未设置")
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "gpt-4o-mini" # gpt模型
+model = "deepseek-ai/DeepSeek-R1" # gpt模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符" # 系统提示词
 
 # 上下文（临时）
 enable_history = False # 默认关闭
+output_think = True
 
 # 获取本地IP地址
 ip = "0.0.0.0"
@@ -34,21 +35,32 @@ GPT模型:{model}
 连接UUID:{uuid}
 -----------"""
 
+SENDERS = ['外部']
 COMMANDS = ["#登录", "GPT 聊天", "GPT 保存", "GPT 上下文", "运行命令", "GPT 脚本"]
 
-async def gpt_main(conversation, player_prompt):
-    # 发送提示到GPT并获取回复
-    gpt_message = await conversation.call_gpt(player_prompt)
+async def gpt_main(conversation, player_prompt, enable_history=True):
+    try:
+        # 发送提示到GPT并获取回复
+        result = await conversation.call_gpt(player_prompt)
+        if result is None:
+            content = '错误: GPT回复为None'
+            conversation.log_message(content)
+            return content
 
-    if gpt_message is None:
-        gpt_message = '错误: GPT回复为None'
+        content, reasoning_content = result  # 正确解包元组
+        print(f"gpt消息: {content}\n思考内容:{reasoning_content}")
 
-    print(f"gpt消息: {gpt_message}")
+        if not enable_history:
+            await conversation.close()
+        
+        if reasoning_content != '' and content:
+            return content, reasoning_content
+        
+        return content
 
-    if not enable_history:
-        await conversation.close()
-
-    return gpt_message
+    except Exception as e:
+        conversation.log_message(f"gpt_main 函数中发生错误: {str(e)}")
+        return f"错误: {str(e)}"
 
 async def send_data(websocket, message):
     """向客户端发送数据"""
@@ -135,7 +147,12 @@ async def handle_player_message(websocket, data, conversation):
     message = data['body']['message']
 
     if sender and message:
-        print(f"玩家 {sender} 说: {message}")
+        # 过滤服务器消息
+        # for server_sender in SENDERS:
+        #     if sender != server_sender:
+        #         print(f"玩家 {sender} 说: {message}")
+        if sender != '外部':
+            print(f"玩家 {sender} 说: {message}")
 
         command, content = parse_message(message)
 
@@ -178,23 +195,44 @@ def parse_message(message):
             return cmd, message[len(cmd):].strip()
     return "", message
 
+import re
+import asyncio
+
+import re
+import asyncio
+
 async def handle_gpt_chat(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    result = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
-    # 使用正则表达式按句号（包括英文句号和中文句号）分割消息
-    sentences = re.split(r'(?<=[。．.])', gpt_message)
+    main_content, reasoning_content = result
     
-    for sentence in sentences:
-        if sentence.strip():  # 跳过空句子
-            await send_game_message(websocket, sentence)  # 使用脚本处理数据
-            await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+    if reasoning_content:
+        max_length = 120 #设置最大字符数量
+        for i in range(0, len(reasoning_content), max_length):
+            sentence = reasoning_content[i:i+max_length].strip()
+            if sentence:
+                await send_game_message(websocket, f"|think|\n{sentence}\n|think|\n")
+                await asyncio.sleep(0.1)
+    
+    if main_content:
+        # 使用正则表达式按句号（包括英文句号和中文句号）分割 reasoning_content
+        main_sentences = re.split(r'(?<=[。．.])', main_content)
+        
+        for sentence in main_sentences:
+            if sentence.strip():
+                await send_game_message(websocket, sentence) 
+                await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
+
 
 async def handle_gpt_script(websocket, content, conversation):
     prompt = content
-    gpt_message = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
+    result = await gpt_main(conversation, prompt)  # 使用 await 调用异步函数
     
-    await send_script_data(websocket, gpt_message)  # 使用脚本处理数据
+    main_content, reasoning_content = result
+    
+    await send_script_data(websocket, main_content)
+    await send_script_data(websocket, reasoning_content)  # 使用脚本处理数据
     await asyncio.sleep(0.1)  # 暂停0.1秒，避免消息发送过快
 
 async def handle_gpt_save(websocket, conversation):
