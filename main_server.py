@@ -7,8 +7,8 @@ import uuid
 import websockets
 from gptapi import GPTAPIConversation
 
-api_url = "https://api.siliconflow.cn" # API地址
-api_key = os.getenv("siliconflow_apikey")  # API密钥
+api_url = "https://api.deepseek.com/v1" # API地址
+api_key = os.getenv("DEEPSEEK_API_KEY")  # API密钥
 
 # api_url = "https://burn.hair/v1" # API地址
 # api_key = os.getenv("API_KEY")  # API密钥
@@ -18,7 +18,7 @@ if not api_url:
 if not api_key:
     raise ValueError("API_KEY 环境变量未设置")
 
-model = "deepseek-ai/DeepSeek-R1" # 模型
+model = "deepseek-chat" # 模型
 #model = "gpt-4o" # 模型
 system_prompt = "请始终保持积极和专业的态度。回答尽量保持一段话不要太长，适当添加换行符，尽量不要使用markdown" # 系统提示词
 
@@ -305,7 +305,7 @@ async def handle_event(websocket, data, conversation):
     #     print(data)
     #     print()
 
-async def handle_connection(websocket, path):
+async def handle_connection(websocket):
     global connection_uuid
     connection_uuid = str(uuid.uuid4())
     print(f"客户端:{connection_uuid}已连接")
@@ -334,9 +334,7 @@ websocket_config = {
     'ping_timeout': 15,
     'close_timeout': 15,
     'max_size': 10 * 1024 * 1024,  # 10MB
-    'max_queue': 32,
-    'read_limit': 65536,
-    'write_limit': 65536,
+    'max_queue': 32
 }
 
 async def main():
