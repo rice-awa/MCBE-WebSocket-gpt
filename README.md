@@ -1,7 +1,9 @@
 # MCBE Websocket Server 游戏内使用 GPT
 
 [English](./README_EN.md)
-
+> [!IMPORTANT]
+> 本项目已重构，新项目-->[MCBE-AI-Agent](https://github.com/rice-awa/MCBE-AI-Agent)
+> 此项目不再维护
 这个项目提供了一个基于 Python 的 Minecraft Bedrock Edition (**_MCBE_**) 服务器端的 WebSocket 服务，它可以获取玩家的**聊天信息**，并调用 GPT API 实现在游戏内使用**chatGPT**，最终将 GPT 回复传回到游戏中。项目使用 aiohttp 和 Websockets 异步。
 
 在这里可以看到函数描述文档：[函数描述文档](https://blog.rice-awa.top/blog/MCBE-websockets-doc)
